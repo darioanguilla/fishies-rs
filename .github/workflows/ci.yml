@@ -39,14 +39,15 @@ jobs:
           - { name: linux-x86_64, os: ubuntu-latest }
           - { name: linux-arm64, os: ubuntu-24.04-arm }
           - { name: windows-x86_64, os: windows-latest }
-          - { name: macos-arm64, os: macos-latest }
+          # also cross-builds macOS x86_64, so CI needs a single macOS runner
+          - { name: macos-arm64, os: macos-latest, extra_target: x86_64-apple-darwin }
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - name: Install Rust
         shell: bash
         run: |
-          rustup toolchain install stable --profile minimal
+          rustup toolchain install stable --profile minimal ${{ matrix.extra_target && format('--target {0}', matrix.extra_target) || '' }}
           rustup default stable
       - uses: Swatinem/rust-cache@v2
       - name: Run tests
@@ -68,8 +69,12 @@ jobs:
             echo '```'
             echo "</details>"
           } >> "$GITHUB_STEP_SUMMARY"
+      - name: Build ${{ matrix.extra_target }}
+        if: matrix.extra_target
+        shell: bash
+        run: cargo build --locked --target ${{ matrix.extra_target }}
 
-  # The release targets that the test matrix cannot run natively.
+  # Release targets that the test matrix does not build.
   cross-build:
     name: build (${{ matrix.target }})
     strategy:
@@ -78,7 +83,6 @@ jobs:
         include:
           - { target: riscv64gc-unknown-linux-gnu, os: ubuntu-latest }
           - { target: aarch64-pc-windows-msvc, os: windows-latest }
-          - { target: x86_64-apple-darwin, os: macos-latest }
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
