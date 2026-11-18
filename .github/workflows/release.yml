@@ -61,23 +61,24 @@ jobs:
           echo "release=true" >> "$GITHUB_OUTPUT"
 
   build:
-    name: build (${{ matrix.target }})
+    name: build (${{ matrix.name }})
     needs: tag
     if: needs.tag.outputs.release == 'true'
     strategy:
       fail-fast: false
       matrix:
+        # `targets` is a space-separated list built on the same runner
         include:
-          - { target: x86_64-unknown-linux-gnu, os: ubuntu-22.04 }
-          - { target: aarch64-unknown-linux-gnu, os: ubuntu-22.04-arm }
-          - { target: riscv64gc-unknown-linux-gnu, os: ubuntu-22.04 }
-          - { target: x86_64-pc-windows-msvc, os: windows-latest }
-          - { target: aarch64-pc-windows-msvc, os: windows-latest }
-          - { target: x86_64-apple-darwin, os: macos-latest }
-          - { target: aarch64-apple-darwin, os: macos-latest }
+          - { name: linux-x86_64, os: ubuntu-22.04, targets: x86_64-unknown-linux-gnu }
+          - { name: linux-arm64, os: ubuntu-22.04-arm, targets: aarch64-unknown-linux-gnu }
+          - { name: linux-riscv64, os: ubuntu-22.04, targets: riscv64gc-unknown-linux-gnu }
+          - { name: windows, os: windows-latest, targets: x86_64-pc-windows-msvc aarch64-pc-windows-msvc }
+          # macOS runners are scarce: build both architectures on one
+          - { name: macos, os: macos-latest, targets: aarch64-apple-darwin x86_64-apple-darwin }
     runs-on: ${{ matrix.os }}
     env:
       TAG: ${{ needs.tag.outputs.tag }}
+      TARGETS: ${{ matrix.targets }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -85,34 +86,39 @@ jobs:
       - name: Install Rust
         shell: bash
         run: |
-          rustup toolchain install stable --profile minimal --target ${{ matrix.target }}
+          rustup toolchain install stable --profile minimal $(printf -- '--target %s ' $TARGETS)
           rustup default stable
       - name: Install RISC-V linker
-        if: matrix.target == 'riscv64gc-unknown-linux-gnu'
+        if: contains(matrix.targets, 'riscv64')
         run: |
           sudo apt-get update
           sudo apt-get install -y gcc-riscv64-linux-gnu
           echo "CARGO_TARGET_RISCV64GC_UNKNOWN_LINUX_GNU_LINKER=riscv64-linux-gnu-gcc" >> "$GITHUB_ENV"
       - name: Build
         shell: bash
-        run: cargo build --release --locked --target ${{ matrix.target }}
+        run: |
+          for target in $TARGETS; do
+            cargo build --release --locked --target "$target"
+          done
       - name: Package
         shell: bash
         run: |
-          name="fishies-$TAG-${{ matrix.target }}"
-          mkdir -p "dist/$name"
-          cp README.md LICENSE "dist/$name/"
-          if [[ "${{ matrix.target }}" == *windows* ]]; then
-            cp "target/${{ matrix.target }}/release/fishies.exe" "dist/$name/"
-            (cd dist && 7z a -tzip "$name.zip" "$name" > /dev/null)
-          else
-            cp "target/${{ matrix.target }}/release/fishies" "dist/$name/"
-            tar -C dist -czf "dist/$name.tar.gz" "$name"
-          fi
-          rm -r "dist/$name"
+          for target in $TARGETS; do
+            name="fishies-$TAG-$target"
+            mkdir -p "dist/$name"
+            cp README.md LICENSE "dist/$name/"
+            if [[ "$target" == *windows* ]]; then
+              cp "target/$target/release/fishies.exe" "dist/$name/"
+              (cd dist && 7z a -tzip "$name.zip" "$name" > /dev/null)
+            else
+              cp "target/$target/release/fishies" "dist/$name/"
+              tar -C dist -czf "dist/$name.tar.gz" "$name"
+            fi
+            rm -r "dist/$name"
+          done
       - uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.target }}
+          name: ${{ matrix.name }}
           path: dist/*
           if-no-files-found: error
 
