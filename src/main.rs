@@ -4,7 +4,8 @@
 //! by Kirk Baucom (most ASCII art by Joan Stark), with a transparent
 //! background. Licensed under the GNU GPL, version 2 or later.
 //!
-//! Keys: `q` quit, `p` pause, `r` redraw (recreates every object).
+//! Keys: `q` quit, `p` pause, `r` redraw (recreates every object),
+//! `a` switch between ASCII and ANSI mode (truecolor and pixel art).
 
 mod art;
 mod color;
@@ -22,7 +23,7 @@ use crossterm::{
     terminal,
 };
 
-use engine::{Animation, Buffer, render::Screen};
+use engine::{Animation, Buffer, Mode, render::Screen};
 
 /// Same pace as curses `halfdelay(1)` in the original.
 const TICK: Duration = Duration::from_millis(100);
@@ -65,7 +66,7 @@ fn main() -> io::Result<()> {
             "-v" | "--version" => println!("fishies {}", env!("CARGO_PKG_VERSION")),
             _ => println!(
                 "fishies {}: an aquarium animation in ASCII art\n\n\
-                 Keys: q quit, p pause, r redraw\n\
+                 Keys: q quit, p pause, r redraw, a ASCII/ANSI mode\n\
                  Set FISHIES_OBJECT to one of {} to always spawn that object.",
                 env!("CARGO_PKG_VERSION"),
                 objects::OBJECT_NAMES.join(", ")
@@ -83,8 +84,10 @@ fn main() -> io::Result<()> {
 
     let _guard = TermGuard::new()?;
     let mut out = BufWriter::with_capacity(1 << 16, io::stdout());
+    // the mode survives redraws and resizes
+    let mut mode = Mode::default();
     loop {
-        match run_scene(&mut out)? {
+        match run_scene(&mut out, &mut mode)? {
             Next::Quit => return Ok(()),
             Next::Rebuild => continue,
         }
@@ -93,13 +96,13 @@ fn main() -> io::Result<()> {
 
 /// Build the scene for the current terminal size and animate it until the
 /// user quits or asks for a redraw / resizes the terminal.
-fn run_scene(out: &mut impl Write) -> io::Result<Next> {
+fn run_scene(out: &mut impl Write, mode: &mut Mode) -> io::Result<Next> {
     let (w, h) = terminal::size()?;
     let mut anim = Animation::new(w as i32, h as i32);
     objects::populate(&mut anim);
     let mut buf = Buffer::new(w as i32, h as i32);
     let mut screen = Screen::new();
-    anim.render(&mut buf);
+    anim.render(&mut buf, *mode);
     screen.draw(out, &buf)?;
 
     let mut paused = false;
@@ -115,6 +118,12 @@ fn run_scene(out: &mut impl Write) -> io::Result<Next> {
                     }
                     KeyCode::Char('r') => return Ok(Next::Rebuild),
                     KeyCode::Char('p') => paused = !paused,
+                    KeyCode::Char('a') => {
+                        // redraw at once, even while paused
+                        *mode = mode.toggled();
+                        anim.render(&mut buf, *mode);
+                        screen.draw(out, &buf)?;
+                    }
                     _ => {}
                 },
                 Event::Resize(..) => return Ok(Next::Rebuild),
@@ -124,7 +133,7 @@ fn run_scene(out: &mut impl Write) -> io::Result<Next> {
         }
         if !paused {
             objects::tick(&mut anim);
-            anim.render(&mut buf);
+            anim.render(&mut buf, *mode);
             screen.draw(out, &buf)?;
         }
         next_tick += TICK;
