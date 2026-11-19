@@ -45,6 +45,57 @@ impl PixFrame {
         self.px[y * self.width + x] = c;
     }
 
+    /// Set a pixel, ignoring coordinates outside the frame.
+    pub fn dot(&mut self, x: i32, y: i32, c: Rgb) {
+        if x >= 0 && y >= 0 && (x as usize) < self.width && (y as usize) < self.height {
+            self.set(x as usize, y as usize, Some(c));
+        }
+    }
+
+    /// Paint every pixel whose center satisfies `inside`.
+    pub fn fill(&mut self, c: Rgb, inside: impl Fn(f32, f32) -> bool) {
+        for y in 0..self.height {
+            for x in 0..self.width {
+                if inside(x as f32 + 0.5, y as f32 + 0.5) {
+                    self.set(x, y, Some(c));
+                }
+            }
+        }
+    }
+
+    pub fn ellipse(&mut self, cx: f32, cy: f32, rx: f32, ry: f32, c: Rgb) {
+        self.fill(c, |x, y| {
+            let (dx, dy) = ((x - cx) / rx, (y - cy) / ry);
+            dx * dx + dy * dy <= 1.0
+        });
+    }
+
+    /// Fill a polygon (even-odd rule).
+    pub fn poly(&mut self, pts: &[(f32, f32)], c: Rgb) {
+        self.fill(c, |x, y| {
+            let mut inside = false;
+            let mut j = pts.len() - 1;
+            for i in 0..pts.len() {
+                let ((xi, yi), (xj, yj)) = (pts[i], pts[j]);
+                if (yi > y) != (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi {
+                    inside = !inside;
+                }
+                j = i;
+            }
+            inside
+        });
+    }
+
+    /// A one-pixel line between two pixel coordinates.
+    pub fn line(&mut self, (x0, y0): (f32, f32), (x1, y1): (f32, f32), c: Rgb) {
+        let steps = (x1 - x0).abs().max((y1 - y0).abs()).ceil().max(1.0) as i32;
+        for i in 0..=steps {
+            let t = i as f32 / steps as f32;
+            let (x, y) = (x0 + (x1 - x0) * t, y0 + (y1 - y0) * t);
+            self.dot(x.round() as i32, y.round() as i32, c);
+        }
+    }
+
     /// Flip horizontally.
     pub fn mirrored(&self) -> Self {
         let mut f = PixFrame::new(self.width, self.height);
@@ -121,6 +172,21 @@ mod tests {
         let m = grid().mirrored();
         assert_eq!(m.get(0, 0), Some((20, 20, 20)));
         assert_eq!(m.get(1, 1), Some((30, 30, 30)));
+    }
+
+    #[test]
+    fn shapes() {
+        let c = (1, 2, 3);
+        let mut f = PixFrame::new(5, 5);
+        f.poly(&[(0.0, 0.0), (5.0, 0.0), (0.0, 5.0)], c);
+        assert!(f.get(0, 0).is_some() && f.get(4, 4).is_none());
+        let mut e = PixFrame::new(5, 5);
+        e.ellipse(2.5, 2.5, 2.5, 2.5, c);
+        assert!(e.get(2, 2).is_some() && e.get(0, 0).is_none());
+        let mut l = PixFrame::new(4, 4);
+        l.line((0.0, 0.0), (3.0, 3.0), c);
+        assert!((0..4).all(|i| l.get(i, i).is_some()));
+        l.dot(-1, 9, c); // out of bounds is ignored
     }
 
     #[test]
