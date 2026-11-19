@@ -3,19 +3,23 @@
 use std::time::{Duration, Instant};
 
 use super::{depth, rand_f, rand_int};
-use crate::art;
 use crate::engine::{Animation, DeathAction, Entity, Kind, Sprite};
+use crate::{art, pixel_art};
 
 pub fn add_environment(anim: &mut Animation) {
     // tile the segments so they stretch across the screen
     let segment_size = art::WATER_SEGMENTS[0].len() as i32;
     let repeat = (anim.width / segment_size).max(0) as usize + 1;
     for (i, seg) in art::WATER_SEGMENTS.iter().enumerate() {
-        let frames = Sprite::single(&seg.repeat(repeat)).color("cyan").build();
+        let line = seg.repeat(repeat);
+        let frames = Sprite::single(&line).color("cyan").build();
         anim.add(
             Entity::new(Kind::Waterline, frames)
                 .at(0.0, i as f64 + 5.0, depth::WATER_LINE[i])
-                .physical(22.0),
+                .physical(22.0)
+                // the pixel waves roll; the ASCII line has a single frame
+                .speed(0.0, 0.0, 0.0, 0.25)
+                .pixels(pixel_art::waterline(i, &line)),
         );
     }
 }
@@ -26,7 +30,11 @@ pub fn add_castle(anim: &mut Animation) {
         .color("BLACK")
         .build();
     let (w, h) = (anim.width as f64, anim.height as f64);
-    anim.add(Entity::new(Kind::Other, frames).at(w - 32.0, h - 13.0, depth::CASTLE));
+    anim.add(
+        Entity::new(Kind::Other, frames)
+            .pixels(vec![pixel_art::castle()])
+            .at(w - 32.0, h - 13.0, depth::CASTLE),
+    );
 }
 
 pub fn add_all_seaweed(anim: &mut Animation) {
@@ -51,7 +59,7 @@ pub fn add_seaweed(anim: &mut Animation) {
     let lifetime = Duration::from_secs(rand_int(4.0 * 60.0) as u64 + 8 * 60);
     let frames = Sprite::new(&images).color("green").build();
     anim.add(
-        Entity::new(Kind::Other, frames)
+        Entity::new(Kind::Seaweed, frames)
             .at(x, y, depth::SEAWEED)
             .speed(0.0, 0.0, 0.0, anim_speed)
             .die_time(Instant::now() + lifetime)

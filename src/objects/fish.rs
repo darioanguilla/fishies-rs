@@ -1,19 +1,29 @@
 //! Fish, their bubbles, and what happens when they meet sharks or hooks.
 
 use super::{depth, rand_int};
-use crate::art;
 use crate::engine::{Animation, Behavior, CollHandler, DeathAction, Entity, Id, Kind, Sprite};
+use crate::{art, pixel_art};
 
 const COLORS: [char; 12] = ['c', 'C', 'r', 'R', 'y', 'Y', 'b', 'B', 'g', 'G', 'm', 'M'];
 
+/// A random color letter for each mask digit 1-9.
+pub fn rand_palette() -> [char; 9] {
+    std::array::from_fn(|_| COLORS[rand_int(COLORS.len() as f64) as usize])
+}
+
+/// Replace the digits 1-9 of a color mask with the palette's colors.
+fn apply_palette(mask: &str, palette: &[char; 9]) -> String {
+    mask.chars()
+        .map(|c| match c {
+            '1'..='9' => palette[c as usize - '1' as usize],
+            c => c,
+        })
+        .collect()
+}
+
 /// Replace the digits 1-9 of a color mask with random colors.
 pub fn rand_color(mask: &str) -> String {
-    let mut out = mask.to_string();
-    for digit in '1'..='9' {
-        let color = COLORS[rand_int(COLORS.len() as f64) as usize];
-        out = out.replace(digit, &color.to_string());
-    }
-    out
+    apply_palette(mask, &rand_palette())
 }
 
 pub fn add_all_fish(anim: &mut Animation) {
@@ -29,7 +39,9 @@ pub fn add_all_fish(anim: &mut Animation) {
 pub fn new_fish(fish_num: usize) -> Entity {
     // mask digits: 1 body, 2 dorsal fin, 3 flippers, 4 eye, 5 mouth, 6 tailfin, 7 gills
     let (image, mask) = art::FISH[fish_num];
-    let mask = rand_color(&mask.replace('4', "W"));
+    // the same colors in both modes
+    let palette = rand_palette();
+    let mask = apply_palette(&mask.replace('4', "W"), &palette);
     let mut speed = super::rand_f(2.0) + 0.25;
     if fish_num % 2 == 1 {
         speed = -speed;
@@ -37,6 +49,7 @@ pub fn new_fish(fish_num: usize) -> Entity {
     let z = rand_int(depth::FISH_END - depth::FISH_START) + depth::FISH_START;
     let frames = Sprite::single(image).mask(&mask).auto_trans().build();
     Entity::new(Kind::Fish, frames)
+        .pixels(vec![pixel_art::fish(fish_num, &palette)])
         .at(0.0, 0.0, z)
         .speed(speed, 0.0, 0.0, 0.0)
         .behavior(Behavior::Fish)

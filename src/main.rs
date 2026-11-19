@@ -11,6 +11,7 @@ mod art;
 mod color;
 mod engine;
 mod objects;
+mod pixel_art;
 
 use std::io::{self, BufWriter, Write};
 use std::time::{Duration, Instant};
