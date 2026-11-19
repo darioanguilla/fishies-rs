@@ -67,8 +67,54 @@ cargo build --release
 | `q`, `Esc`, `Ctrl+C` | quit                                   |
 | `p`            | pause / resume                               |
 | `r`            | redraw (recreates every object)              |
+| `a`            | switch between ASCII and ANSI mode           |
 
-Resizing the terminal also rebuilds the scene.
+Resizing the terminal also rebuilds the scene. The mode is kept across redraws and resizes.
+
+## ANSI mode
+
+Press `a` to switch from the original ASCII art to a truecolor look. The water stays
+transparent: like in ASCII mode, the terminal's own background shows through.
+
+- Everything is pixel art drawn with half blocks (`▀`, `▄`), two pixels per cell: fish, castle,
+  seaweed, the rolling water surface, and all the visitors (ship, whale and its spout, sea
+  monster, big fish, shark and its splat, fishhook, swan, ducks, dolphins). Each sprite takes up
+  exactly the cells of its ASCII version, so the animation and collisions don't change.
+- Two things stay as characters, because a whole cell would be too coarse for them: the
+  bubbles (`·` `◦` `○`) and the fishing line (`│`).
+
+It needs a terminal with 24-bit color and a font with block characters: Windows Terminal,
+iTerm2, kitty, WezTerm, Alacritty, GNOME Terminal and most modern terminals work.
+
+| ASCII | ANSI |
+|-------|------|
+| ![whale, ASCII mode](docs/screenshots/whale-ascii.png) | ![whale, ANSI mode](docs/screenshots/whale-ansi.png) |
+| ![shark, ASCII mode](docs/screenshots/shark-ascii.png) | ![shark, ANSI mode](docs/screenshots/shark-ansi.png) |
+| ![ship over a wallpaper, ASCII mode](docs/screenshots/transparent-ascii.png) | ![ship over a wallpaper, ANSI mode](docs/screenshots/transparent-ansi.png) |
+
+The last row uses a colorful background to show the transparent water. You get the same
+look in your terminal with a background image or a see-through window:
+
+- **Windows Terminal**: *Settings* → your profile → *Appearance* → *Background image*, or
+  *Background opacity* / *Enable acrylic material*. In `settings.json` these are
+  `"backgroundImage"`, `"opacity"` and `"useAcrylic"`.
+- **iTerm2**: *Settings* → *Profiles* → *Window* → *Background Image* or *Transparency*.
+- **kitty**: `background_image` or `background_opacity` in `kitty.conf`.
+- **WezTerm**: `window_background_image` or `window_background_opacity`.
+- **Alacritty**: `opacity` under `[window]`.
+
+A light or colored terminal theme works too: the water takes the theme's background color.
+
+Every visitor in ANSI mode:
+
+| | | |
+|---|---|---|
+| ![ship](docs/screenshots/gallery-ship.png) | ![whale](docs/screenshots/gallery-whale.png) | ![sea monster](docs/screenshots/gallery-monster.png) |
+| ![big fish](docs/screenshots/gallery-big_fish.png) | ![shark](docs/screenshots/gallery-shark.png) | ![fishhook](docs/screenshots/gallery-fishhook.png) |
+| ![swan](docs/screenshots/gallery-swan.png) | ![ducks](docs/screenshots/gallery-ducks.png) | ![dolphins](docs/screenshots/gallery-dolphins.png) |
+
+Regenerate the
+screenshots with `scripts/screenshots.sh`; it needs a Chromium-based browser such as Edge or Chrome.
 
 To always spawn the same random object (handy for debugging), set `FISHIES_OBJECT` to one of
 `ship`, `whale`, `monster`, `big_fish`, `shark`, `fishhook`, `swan`, `ducks`, `dolphins`.

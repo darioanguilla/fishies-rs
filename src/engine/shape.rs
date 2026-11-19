@@ -4,17 +4,17 @@
 use crate::color::{self, Style};
 
 /// A single drawable cell; `None` is transparent.
-pub type Cell = Option<(char, Style)>;
+pub type SpriteCell = Option<(char, Style)>;
 
 #[derive(Clone, Debug)]
 pub struct Frame {
     pub width: usize,
     pub height: usize,
-    pub cells: Vec<Cell>,
+    pub cells: Vec<SpriteCell>,
 }
 
 impl Frame {
-    pub fn get(&self, col: usize, row: usize) -> Cell {
+    pub fn get(&self, col: usize, row: usize) -> SpriteCell {
         self.cells[row * self.width + col]
     }
 }

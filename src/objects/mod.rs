@@ -3,6 +3,8 @@
 mod environment;
 mod fish;
 mod random;
+#[cfg(test)]
+mod screenshots;
 
 use std::sync::OnceLock;
 
@@ -176,7 +178,7 @@ mod tests {
             let mut buf = crate::engine::Buffer::new(w, h);
             for _ in 0..3000 {
                 tick(&mut anim);
-                anim.render(&mut buf);
+                anim.render(&mut buf, crate::engine::Mode::Ascii);
             }
         }
     }

@@ -2,13 +2,17 @@
 //! aquarium: an entity store, collision detection and z-ordered rendering.
 
 pub mod entity;
+pub mod pixel;
 pub mod render;
 pub mod shape;
 
 pub use entity::{Behavior, CollHandler, DeathAction, Entity, Id, Kind, Step};
-pub use render::Buffer;
+pub use pixel::PixFrame;
+pub use render::{Buffer, Mode};
 pub use shape::Sprite;
 
+use crate::color::{self, Style, shade};
+use render::Glyph;
 pub struct Animation {
     pub width: i32,
     pub height: i32,
@@ -98,12 +102,55 @@ impl Animation {
     }
 
     /// Draw all entities, back (high z) to front (low z).
-    pub fn render(&self, buf: &mut Buffer) {
+    pub fn render(&self, buf: &mut Buffer, mode: Mode) {
         buf.clear();
         let mut order: Vec<&Entity> = self.entities.iter().filter(|e| e.alive).collect();
         order.sort_by(|a, b| b.z.total_cmp(&a.z));
         for e in order {
-            buf.blit(e.frame(), e.x.trunc() as i32, e.y.trunc() as i32);
+            let (x, y) = (e.x.trunc() as i32, e.y.trunc() as i32);
+            match (mode, e.pixel_frame()) {
+                (Mode::Ascii, _) => buf.blit(e.frame(), x, y, ascii_glyph),
+                (Mode::Ansi, Some(px)) => buf.blit_pixels(px, x, y),
+                (Mode::Ansi, None) => buf.blit(e.frame(), x, y, |ch, st, row, h| {
+                    ansi_glyph(e.kind, ch, st, row, h)
+                }),
+            }
         }
+    }
+}
+
+fn ascii_glyph(ch: char, st: Style, _row: usize, _height: usize) -> Glyph {
+    Glyph {
+        ch,
+        fg: st.color,
+        bold: st.bold,
+    }
+}
+
+/// ANSI mode for sprites without pixel art: truecolor with a soft vertical
+/// light, and a few Unicode replacements.
+fn ansi_glyph(kind: Kind, ch: char, st: Style, row: usize, height: usize) -> Glyph {
+    let ch = match (kind, ch) {
+        (Kind::Bubble, '.') => '·',
+        (Kind::Bubble, 'o') => '◦',
+        (Kind::Bubble, 'O') => '○',
+        (Kind::FishLine, '|') => '│',
+        (_, c) => c,
+    };
+    let t = if height > 1 {
+        row as f32 / (height - 1) as f32
+    } else {
+        0.0
+    };
+    // seaweed is lit from the surface, everything else gets a gentle gradient
+    let (top, bottom) = if kind == Kind::Seaweed {
+        (1.35, 0.75)
+    } else {
+        (1.12, 0.85)
+    };
+    Glyph {
+        ch,
+        fg: color::rgb(shade(color::ansi_rgb(st.color), top + (bottom - top) * t)),
+        bold: st.bold,
     }
 }

@@ -3,6 +3,7 @@
 use std::rc::Rc;
 use std::time::Instant;
 
+use super::pixel::PixFrame;
 use super::shape::Frame;
 
 pub type Id = u64;
@@ -11,6 +12,7 @@ pub type Id = u64;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Kind {
     Other,
+    Seaweed,
     Fish,
     Bubble,
     Waterline,
@@ -82,6 +84,8 @@ pub struct Entity {
     pub id: Id,
     pub kind: Kind,
     pub frames: Vec<Frame>,
+    /// Pixel-art frames for ANSI mode; empty means "draw the ASCII frames".
+    pub pixels: Vec<PixFrame>,
     pub frame_pos: f64,
     pub x: f64,
     pub y: f64,
@@ -108,6 +112,7 @@ impl Entity {
             id: 0,
             kind,
             frames,
+            pixels: Vec::new(),
             frame_pos: 0.0,
             x: 0.0,
             y: 0.0,
@@ -178,9 +183,25 @@ impl Entity {
         self
     }
 
+    /// Pixel art for ANSI mode. Each frame must be as wide as the ASCII
+    /// frames and twice as tall, so the footprint (and gameplay) is the same.
+    pub fn pixels(mut self, frames: Vec<PixFrame>) -> Self {
+        self.pixels = frames;
+        self
+    }
+
     pub fn frame(&self) -> &Frame {
         let i = self.frame_pos.max(0.0) as usize % self.frames.len();
         &self.frames[i]
+    }
+
+    /// Current pixel frame, if the entity has pixel art.
+    pub fn pixel_frame(&self) -> Option<&PixFrame> {
+        if self.pixels.is_empty() {
+            return None;
+        }
+        let i = self.frame_pos.max(0.0) as usize % self.pixels.len();
+        Some(&self.pixels[i])
     }
 
     pub fn width(&self) -> f64 {
