@@ -34,7 +34,11 @@ pub fn seaweed(height: usize, res: Res) -> Vec<PixFrame> {
                 p.fill((70, 170, 80), |px, py| (px - x(py)).abs() <= 0.22);
                 let mut y = 1.0;
                 while y < 2.0 * height as f32 - 0.5 {
-                    let dir = if (y as usize / 2) % 2 == 0 { 1.0 } else { -1.0 };
+                    let dir = if (y as usize / 2).is_multiple_of(2) {
+                        1.0
+                    } else {
+                        -1.0
+                    };
                     let (cx, cy) = (x(y) + dir * 0.4, y - 0.15);
                     p.ellipse(cx, cy, 0.38, 0.16, (95, 190, 95));
                     y += 1.25;
