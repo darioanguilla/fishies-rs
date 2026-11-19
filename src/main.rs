@@ -62,18 +62,35 @@ enum Next {
 }
 
 fn main() -> io::Result<()> {
-    if let Some(arg) = std::env::args().nth(1) {
-        match arg.as_str() {
-            "-v" | "--version" => println!("fishies {}", env!("CARGO_PKG_VERSION")),
-            _ => println!(
-                "fishies {}: an aquarium animation in ASCII art\n\n\
-                 Keys: q quit, p pause, r redraw, a ASCII/ANSI mode\n\
-                 Set FISHIES_OBJECT to one of {} to always spawn that object.",
-                env!("CARGO_PKG_VERSION"),
-                objects::OBJECT_NAMES.join(", ")
-            ),
+    let usage = || {
+        format!(
+            "fishies {}: an aquarium animation in ASCII art\n\n\
+             Usage: fishies [-h | --help] [-v | --version]\n\n\
+             Keys: q quit, p pause, r redraw, a ASCII/ANSI mode\n\
+             Set FISHIES_OBJECT to one of {} to always spawn that object.",
+            env!("CARGO_PKG_VERSION"),
+            objects::OBJECT_NAMES.join(", ")
+        )
+    };
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    match args.first().map(String::as_str) {
+        None => {}
+        Some("-v" | "--version") if args.len() == 1 => {
+            println!("fishies {}", env!("CARGO_PKG_VERSION"));
+            return Ok(());
         }
-        return Ok(());
+        Some("-h" | "--help") if args.len() == 1 => {
+            println!("{}", usage());
+            return Ok(());
+        }
+        Some(_) => {
+            eprintln!(
+                "fishies: unexpected argument(s): {}\n\n{}",
+                args.join(" "),
+                usage()
+            );
+            std::process::exit(2);
+        }
     }
     objects::force_object(std::env::var("FISHIES_OBJECT").ok().as_deref());
 
