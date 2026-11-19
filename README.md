@@ -92,7 +92,18 @@ iTerm2, kitty, WezTerm, Alacritty, GNOME Terminal and most modern terminals work
 | ![shark, ASCII mode](docs/screenshots/shark-ascii.png) | ![shark, ANSI mode](docs/screenshots/shark-ansi.png) |
 | ![ship over a wallpaper, ASCII mode](docs/screenshots/transparent-ascii.png) | ![ship over a wallpaper, ANSI mode](docs/screenshots/transparent-ansi.png) |
 
-The last row uses a colorful background to show the transparent water.
+The last row uses a colorful background to show the transparent water. You get the same
+look in your terminal with a background image or a see-through window:
+
+- **Windows Terminal**: *Settings* → your profile → *Appearance* → *Background image*, or
+  *Background opacity* / *Enable acrylic material*. In `settings.json` these are
+  `"backgroundImage"`, `"opacity"` and `"useAcrylic"`.
+- **iTerm2**: *Settings* → *Profiles* → *Window* → *Background Image* or *Transparency*.
+- **kitty**: `background_image` or `background_opacity` in `kitty.conf`.
+- **WezTerm**: `window_background_image` or `window_background_opacity`.
+- **Alacritty**: `opacity` under `[window]`.
+
+A light or colored terminal theme works too: the water takes the theme's background color.
 
 Every visitor in ANSI mode:
 
