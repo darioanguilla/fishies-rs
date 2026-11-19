@@ -170,9 +170,14 @@ pub fn waterline(row: usize, line: &str) -> Vec<PixFrame> {
     (0..WATER_FRAMES)
         .map(|p| {
             let mut f = PixFrame::new(chars.len(), 2);
+            let mut run = 0;
             for (x, &c) in chars.iter().enumerate() {
                 if c == ' ' {
                     continue;
+                }
+                // runs of characters are numbered, so each ripple is one streak
+                if x > 0 && chars[x - 1] == ' ' {
+                    run += 1;
                 }
                 if row == 0 {
                     // a continuous rolling wave
@@ -184,9 +189,10 @@ pub fn waterline(row: usize, line: &str) -> Vec<PixFrame> {
                     };
                     f.set(x, y, Some(c));
                 } else {
-                    // glints that drift along the ripples
-                    let y = usize::from((x + p) % 4 >= 2);
-                    let glow = 0.9 + 0.2 * ((x as f32 * 0.9 + p as f32) * PI / 4.0).sin();
+                    // horizontal streaks that bob up and down, with a glint
+                    // drifting along them
+                    let y = (run + row + p / 4) % 2;
+                    let glow = 0.85 + 0.3 * ((x as f32 * 0.7 - p as f32) * PI / 4.0).sin();
                     f.set(x, y, Some(shade(DEEP[row - 1], glow)));
                 }
             }
