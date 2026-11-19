@@ -60,6 +60,7 @@ pub fn add_seaweed(anim: &mut Animation) {
     let frames = Sprite::new(&images).color("green").build();
     anim.add(
         Entity::new(Kind::Seaweed, frames)
+            .pixels(pixel_art::extras::seaweed(height))
             .at(x, y, depth::SEAWEED)
             .speed(0.0, 0.0, 0.0, anim_speed)
             .die_time(Instant::now() + lifetime)

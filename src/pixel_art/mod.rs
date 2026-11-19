@@ -4,10 +4,30 @@
 //! pixels wide as the ASCII art has columns, and twice as many pixels tall
 //! as it has rows.
 
+pub mod creatures;
+pub mod extras;
+
 use std::f32::consts::PI;
 
 use crate::color::{self, Rgb, shade};
 use crate::engine::PixFrame;
+
+const WHITE: Rgb = (250, 250, 250);
+const BLACK: Rgb = (15, 15, 25);
+
+/// The common look of every sprite: a darker outline and light from above.
+fn finish(f: PixFrame) -> PixFrame {
+    f.outlined(0.7).shaded(1.2, 0.8)
+}
+
+fn grid<S: AsRef<str>>(rows: &[S], color: impl Fn(char) -> Option<Rgb>) -> PixFrame {
+    PixFrame::from_grid(rows, color)
+}
+
+/// Mirror right-facing art for objects moving left (`dir == 1`).
+pub fn facing(f: PixFrame, dir: usize) -> PixFrame {
+    if dir == 1 { f.mirrored() } else { f }
+}
 
 /// Fish species, facing right. Digits are the parts of the ASCII color
 /// masks (1 body, 2 dorsal fin, 3 flippers, 5 mouth, 6 tail, 7 gills) and
@@ -72,15 +92,12 @@ const FISH: [&[&str]; 8] = [
 /// `palette[d - 1]` as the mask letter of part `d`.
 pub fn fish(fish_num: usize, palette: &[char; 9]) -> PixFrame {
     let color = |c: char| match c {
-        'W' => Some((250, 250, 250)),
-        'k' => Some((15, 15, 25)),
+        'W' => Some(WHITE),
+        'k' => Some(BLACK),
         d @ '1'..='9' => color::letter_rgb(palette[d as usize - '1' as usize]),
         _ => None,
     };
-    let f = PixFrame::from_grid(FISH[fish_num / 2], color)
-        .outlined(0.7)
-        .shaded(1.2, 0.8);
-    if fish_num % 2 == 1 { f.mirrored() } else { f }
+    facing(finish(grid(FISH[fish_num / 2], color)), fish_num % 2)
 }
 
 /// Castle layout, 31 x 26: `T` tower wall, `K` keep wall, `m` merlon,
@@ -237,6 +254,52 @@ mod tests {
     fn left_facing_fish_is_mirrored() {
         let palette = ['r'; 9];
         assert_eq!(fish(1, &palette), fish(0, &palette).mirrored());
+    }
+
+    fn assert_fits(name: &str, ascii: &str, px: &PixFrame, slack: usize) {
+        let (w, h) = ascii_size(ascii);
+        assert!(
+            px.width.abs_diff(w) <= slack && px.height == 2 * h,
+            "{name}: pixels {}x{}, ASCII {w}x{h} cells",
+            px.width,
+            px.height
+        );
+    }
+
+    #[test]
+    fn object_footprints_match_ascii() {
+        use super::creatures::*;
+        use super::extras::*;
+        for dir in 0..2 {
+            assert_fits("ship", art::SHIP[dir], &facing(ship(), dir), 0);
+            assert_fits("shark", art::SHARK[dir], &shark(), 0);
+            assert_fits(
+                "big fish",
+                art::BIG_FISH[dir],
+                &big_fish(&['y'; 9], art::BIG_FISH_MASK[0]),
+                0,
+            );
+            assert_fits("swan", art::SWAN[dir], &swan(), 0);
+            for (k, f) in art::DUCKS[dir].iter().enumerate() {
+                assert_fits("ducks", f, &ducks(k), 0);
+            }
+            for (k, f) in dolphin((0, 0, 255)).iter().enumerate() {
+                assert_fits("dolphin", art::DOLPHIN[dir][k], f, 0);
+            }
+            // the left-facing ASCII monster is 1-2 columns narrower in some frames
+            for (k, f) in art::MONSTER[dir].iter().enumerate() {
+                assert_fits("monster", f, &monster(k), 2);
+            }
+        }
+        let whale = whale();
+        assert_eq!(whale.len(), 12);
+        assert!(whale.iter().all(|f| (f.width, f.height) == (19, 14)));
+        assert_fits("fishhook", art::FISHHOOK, &fishhook(), 0);
+        let sizes: Vec<_> = art::SPLAT.iter().map(|s| ascii_size(s)).collect();
+        for (k, f) in splat(&sizes).iter().enumerate() {
+            assert_fits("splat", art::SPLAT[k], f, 0);
+        }
+        assert!(seaweed(5).iter().all(|f| (f.width, f.height) == (2, 10)));
     }
 
     #[test]

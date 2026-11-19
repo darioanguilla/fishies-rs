@@ -12,18 +12,13 @@ pub fn rand_palette() -> [char; 9] {
 }
 
 /// Replace the digits 1-9 of a color mask with the palette's colors.
-fn apply_palette(mask: &str, palette: &[char; 9]) -> String {
+pub(super) fn apply_palette(mask: &str, palette: &[char; 9]) -> String {
     mask.chars()
         .map(|c| match c {
             '1'..='9' => palette[c as usize - '1' as usize],
             c => c,
         })
         .collect()
-}
-
-/// Replace the digits 1-9 of a color mask with random colors.
-pub fn rand_color(mask: &str) -> String {
-    apply_palette(mask, &rand_palette())
 }
 
 pub fn add_all_fish(anim: &mut Animation) {
@@ -136,8 +131,10 @@ fn add_splat(anim: &mut Animation, x: f64, y: f64, z: f64) {
         .color("RED")
         .transparent(' ')
         .build();
+    let sizes: Vec<(usize, usize)> = frames.iter().map(|f| (f.width, f.height)).collect();
     anim.add(
         Entity::new(Kind::Other, frames)
+            .pixels(pixel_art::extras::splat(&sizes))
             .at(x - 4.0, y - 2.0, z - 2.0)
             .speed(0.0, 0.0, 0.0, 0.25)
             .die_frame(15),
@@ -149,8 +146,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn rand_color_replaces_all_digits() {
-        let m = rand_color("123456789 W");
+    fn palette_replaces_all_digits() {
+        let m = apply_palette("123456789 W", &rand_palette());
         assert!(!m.chars().any(|c| c.is_ascii_digit()));
         assert!(m.ends_with(" W"));
     }
