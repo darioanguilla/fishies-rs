@@ -462,7 +462,10 @@ mod tests {
                     (surface..f.height).all(|y| row(y) == 0),
                     "frame {k} {res:?}: pixels under the water"
                 );
-                assert!(row(surface - 1) > 0, "frame {k} {res:?}: humps reach the surface");
+                assert!(
+                    row(surface - 1) > 0,
+                    "frame {k} {res:?}: humps reach the surface"
+                );
             }
         }
     }
