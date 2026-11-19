@@ -2,7 +2,8 @@ name: Release
 
 # A release is published whenever CI passes on master and the version in
 # Cargo.toml has no release yet: the workflow tags the commit as v<version>,
-# builds every target and attaches the archives to a GitHub release.
+# builds every target, attaches the archives and executables to a GitHub
+# release and updates the download section of README.md.
 on:
   workflow_run:
     workflows: [CI]
@@ -150,3 +151,21 @@ jobs:
             --verify-tag \
             --title "fishies $TAG" \
             --generate-notes
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+          path: repo
+      - name: Update the README download section
+        working-directory: repo
+        run: |
+          bash .github/scripts/update-readme.sh "$TAG" "$GITHUB_REPOSITORY"
+          if git diff --quiet -- README.md; then
+            echo "README already up to date for $TAG."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "docs: update README downloads for $TAG [skip ci]" -- README.md
+          # master may have moved while the release was building
+          git pull --rebase origin master
+          git push origin HEAD:master
