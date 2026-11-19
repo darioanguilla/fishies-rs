@@ -1,9 +1,12 @@
 name: Release
 
-# A release is published whenever CI passes on master and the version in
-# Cargo.toml has no release yet: the workflow tags the commit as v<version>,
-# builds every target, attaches the archives and executables to a GitHub
-# release and updates the download section of README.md.
+# Runs whenever CI passes on master. The next version comes from the
+# Conventional Commits since the last tag (feat: minor, fix:/perf: patch,
+# `!`/BREAKING CHANGE: major), see .github/scripts/next-version.sh. When
+# there is something to release, the workflow bumps Cargo.toml, tags the
+# commit as v<version>, builds every target, attaches the archives and
+# executables to a GitHub release and updates the download section of
+# README.md. A version bumped by hand in Cargo.toml is released as is.
 on:
   workflow_run:
     workflows: [CI]
@@ -39,25 +42,44 @@ jobs:
         with:
           ref: ${{ env.SHA }}
           fetch-depth: 0
-      - name: Read version and create the tag if missing
+      - name: Pick the version, bump it and tag it
         id: version
         run: |
-          version=$(sed -n 's/^version *= *"\(.*\)"/\1/p' Cargo.toml | head -n1)
-          tag="v$version"
-          echo "tag=$tag" >> "$GITHUB_OUTPUT"
-          if gh release view "$tag" > /dev/null 2>&1; then
-            echo "Release $tag already exists, nothing to do."
-            echo "release=false" >> "$GITHUB_OUTPUT"
-            exit 0
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          current=$(sed -n 's/^version *= *"\(.*\)"/\1/p' Cargo.toml | head -n1)
+          next=$(bash .github/scripts/next-version.sh)
+
+          if [[ -z "$next" ]]; then
+            # no feat/fix since the last tag: just make sure it is released
+            tag="v$current"
+            echo "tag=$tag" >> "$GITHUB_OUTPUT"
+            if gh release view "$tag" > /dev/null 2>&1; then
+              echo "Nothing to release: no feat/fix commits since $tag."
+              echo "release=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          else
+            tag="v$next"
+            echo "tag=$tag" >> "$GITHUB_OUTPUT"
+            if [[ "$next" != "$current" ]]; then
+              bash .github/scripts/set-version.sh "$next"
+              git commit -m "release: $next [skip ci]" -- Cargo.toml Cargo.lock
+              if ! git push origin HEAD:master; then
+                echo "master moved on since $SHA: the CI run of the newer commit will release it."
+                echo "release=false" >> "$GITHUB_OUTPUT"
+                exit 0
+              fi
+              echo "Bumped the version from $current to $next."
+            fi
           fi
+
           if git ls-remote --exit-code --tags origin "refs/tags/$tag" > /dev/null; then
             echo "Tag $tag already exists, building its release."
           else
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git tag -a "$tag" -m "fishies $tag" "$SHA"
+            git tag -a "$tag" -m "fishies $tag" HEAD
             git push origin "$tag"
-            echo "Created tag $tag on $SHA."
+            echo "Created tag $tag on $(git rev-parse HEAD)."
           fi
           echo "release=true" >> "$GITHUB_OUTPUT"
 
