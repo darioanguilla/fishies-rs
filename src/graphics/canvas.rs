@@ -1,7 +1,7 @@
 //! An RGBA image of the scene at the terminal's real pixel resolution.
 
 use crate::color::Rgb;
-use crate::engine::{Animation, Entity, Kind};
+use crate::engine::{Animation, Entity, HIRES, Kind};
 
 /// Pixels are `0` (transparent) or `0xFF_RR_GG_BB`.
 pub struct Canvas {
@@ -70,16 +70,24 @@ pub fn compose(anim: &Animation, canvas: &mut Canvas, cells: Cells) {
     let mut order: Vec<&Entity> = anim.entities.iter().filter(|e| e.alive).collect();
     order.sort_by(|a, b| b.z.total_cmp(&a.z));
     for e in order {
-        if let Some(f) = e.pixel_frame() {
-            // a pixel-art pixel is one cell wide and half a cell tall
+        // high-resolution art first, then the ANSI-mode pixel art
+        let art = e
+            .hires_frame()
+            .map(|f| (f, HIRES as f64))
+            .or_else(|| e.pixel_frame().map(|f| (f, 1.0)));
+        if let Some((f, scale)) = art {
+            // a pixel is 1/scale of a cell wide and 1/(2 scale) of a cell tall
             for py in 0..f.height {
                 let (y0, y1) = (
-                    cells.y(e.y + py as f64 / 2.0),
-                    cells.y(e.y + (py + 1) as f64 / 2.0),
+                    cells.y(e.y + py as f64 / (2.0 * scale)),
+                    cells.y(e.y + (py + 1) as f64 / (2.0 * scale)),
                 );
                 for px in 0..f.width {
                     if let Some(c) = f.get(px, py) {
-                        let (x0, x1) = (cells.x(e.x + px as f64), cells.x(e.x + px as f64 + 1.0));
+                        let (x0, x1) = (
+                            cells.x(e.x + px as f64 / scale),
+                            cells.x(e.x + (px + 1) as f64 / scale),
+                        );
                         canvas.rect(x0, y0, x1, y1, pack(c));
                     }
                 }

@@ -6,7 +6,7 @@ pub mod pixel;
 pub mod render;
 pub mod shape;
 
-pub use entity::{Behavior, CollHandler, DeathAction, Entity, Id, Kind, Step};
+pub use entity::{Behavior, CollHandler, DeathAction, Entity, HIRES, Id, Kind, Step};
 pub use pixel::PixFrame;
 pub use render::{Buffer, Mode};
 pub use shape::Sprite;

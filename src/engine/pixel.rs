@@ -96,6 +96,41 @@ impl PixFrame {
         }
     }
 
+    /// Double the size with Scale2x (EPX): like nearest-neighbor, but a
+    /// pixel's corner takes its neighbors' color where they meet, so
+    /// diagonal edges come out smooth instead of staircased.
+    pub fn scale2x(&self) -> Self {
+        let mut f = PixFrame::new(self.width * 2, self.height * 2);
+        let at = |x: isize, y: isize| {
+            if x < 0 || y < 0 || x >= self.width as isize || y >= self.height as isize {
+                None
+            } else {
+                self.get(x as usize, y as usize)
+            }
+        };
+        for y in 0..self.height {
+            for x in 0..self.width {
+                let (xi, yi) = (x as isize, y as isize);
+                let p = self.get(x, y);
+                let (a, b, c, d) = (
+                    at(xi, yi - 1),
+                    at(xi + 1, yi),
+                    at(xi - 1, yi),
+                    at(xi, yi + 1),
+                );
+                let tl = if c == a && c != d && a != b { a } else { p };
+                let tr = if a == b && a != c && b != d { b } else { p };
+                let bl = if d == c && d != b && c != a { c } else { p };
+                let br = if b == d && b != a && d != c { d } else { p };
+                f.set(2 * x, 2 * y, tl);
+                f.set(2 * x + 1, 2 * y, tr);
+                f.set(2 * x, 2 * y + 1, bl);
+                f.set(2 * x + 1, 2 * y + 1, br);
+            }
+        }
+        f
+    }
+
     /// Flip horizontally.
     pub fn mirrored(&self) -> Self {
         let mut f = PixFrame::new(self.width, self.height);
@@ -172,6 +207,22 @@ mod tests {
         let m = grid().mirrored();
         assert_eq!(m.get(0, 0), Some((20, 20, 20)));
         assert_eq!(m.get(1, 1), Some((30, 30, 30)));
+    }
+
+    #[test]
+    fn scale2x_smooths_diagonals() {
+        let c = Some((9, 9, 9));
+        // a diagonal staircase
+        let f = PixFrame::from_grid(&["x.", "xx"], |ch| (ch == 'x').then_some((9, 9, 9)));
+        let s = f.scale2x();
+        assert_eq!((s.width, s.height), (4, 4));
+        // the empty corner gets its bottom-left quarter filled, on the diagonal
+        assert_eq!(s.get(2, 1), c);
+        assert_eq!(s.get(3, 0), None);
+        assert_eq!(s.get(2, 0), None);
+        // solid areas stay solid
+        assert_eq!(s.get(0, 0), c);
+        assert_eq!(s.get(3, 3), c);
     }
 
     #[test]
