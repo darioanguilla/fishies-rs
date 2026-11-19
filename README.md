@@ -76,11 +76,12 @@ Resizing the terminal also rebuilds the scene. The mode is kept across redraws a
 Press `a` to switch from the original ASCII art to a truecolor look. The water stays
 transparent: like in ASCII mode, the terminal's own background shows through.
 
-- Fish, the castle and the water surface are pixel art drawn with half blocks (`▀`, `▄`), two
-  pixels per cell. Each piece takes up exactly the cells of its ASCII version, so the animation
-  and collisions don't change.
-- Everything else keeps its ASCII art, with softer truecolor shades, lit seaweed tips and Unicode
-  bubbles (`·` `◦` `○`) and fishing line (`│`).
+- Everything is pixel art drawn with half blocks (`▀`, `▄`), two pixels per cell: fish, castle,
+  seaweed, the rolling water surface, and all the visitors (ship, whale and its spout, sea
+  monster, big fish, shark and its splat, fishhook, swan, ducks, dolphins). Each sprite takes up
+  exactly the cells of its ASCII version, so the animation and collisions don't change.
+- Two things stay as characters, because a whole cell would be too coarse for them: the
+  bubbles (`·` `◦` `○`) and the fishing line (`│`).
 
 It needs a terminal with 24-bit color and a font with block characters: Windows Terminal,
 iTerm2, kitty, WezTerm, Alacritty, GNOME Terminal and most modern terminals work.
@@ -91,7 +92,17 @@ iTerm2, kitty, WezTerm, Alacritty, GNOME Terminal and most modern terminals work
 | ![shark, ASCII mode](docs/screenshots/shark-ascii.png) | ![shark, ANSI mode](docs/screenshots/shark-ansi.png) |
 | ![ship over a wallpaper, ASCII mode](docs/screenshots/transparent-ascii.png) | ![ship over a wallpaper, ANSI mode](docs/screenshots/transparent-ansi.png) |
 
-The last row uses a colorful background to show the transparent water. Regenerate the
+The last row uses a colorful background to show the transparent water.
+
+Every visitor in ANSI mode:
+
+| | | |
+|---|---|---|
+| ![ship](docs/screenshots/gallery-ship.png) | ![whale](docs/screenshots/gallery-whale.png) | ![sea monster](docs/screenshots/gallery-monster.png) |
+| ![big fish](docs/screenshots/gallery-big_fish.png) | ![shark](docs/screenshots/gallery-shark.png) | ![fishhook](docs/screenshots/gallery-fishhook.png) |
+| ![swan](docs/screenshots/gallery-swan.png) | ![ducks](docs/screenshots/gallery-ducks.png) | ![dolphins](docs/screenshots/gallery-dolphins.png) |
+
+Regenerate the
 screenshots with `scripts/screenshots.sh`; it needs a Chromium-based browser such as Edge or Chrome.
 
 To always spawn the same random object (handy for debugging), set `FISHIES_OBJECT` to one of
