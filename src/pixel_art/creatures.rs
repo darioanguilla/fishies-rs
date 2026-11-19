@@ -198,9 +198,16 @@ pub fn whale(res: Res) -> Vec<PixFrame> {
 /// its 4 ASCII frames).
 pub const MONSTER_FRAMES: usize = 16;
 
+/// The water surface inside the sea monster's frame, in low-resolution pixel
+/// rows from the top. The monster swims at row 2 and the surface (water line
+/// 0) is at row 5, i.e. art rows 6-7; 7 is the middle of the rolling wave.
+/// Everything from this row down is underwater and not drawn.
+pub const MONSTER_SURFACE: usize = 7;
+
 /// Sea monster frame `frame` of [`MONSTER_FRAMES`], 66 x 10: a serpent whose
 /// body swims in a sine wave travelling from the neck to the tail, swinging
-/// wider towards the tail; the head rides gently above the water.
+/// wider towards the tail; only the humps of the body come out of the water
+/// (below [`MONSTER_SURFACE`] it is hidden), and the head rides gently above.
 pub fn monster(frame: usize, res: Res) -> PixFrame {
     let green = (70, 165, 80);
     let belly = (150, 210, 120);
@@ -270,7 +277,14 @@ pub fn monster(frame: usize, res: Res) -> PixFrame {
         p.dot(61, (head_y - 1.0) as i32, WHITE);
         p.dot(62, (head_y - 1.0) as i32, BLACK);
     }
-    finish(p.f)
+    // cut after the outline, so the body enters the water without an edge
+    let mut f = finish(p.f);
+    for y in (MONSTER_SURFACE * res.scale()).min(f.height)..f.height {
+        for x in 0..f.width {
+            f.set(x, y, None);
+        }
+    }
+    f
 }
 
 /// 34 x 28. Colors come from the fish's palette; the spots sit where the

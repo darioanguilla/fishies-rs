@@ -451,6 +451,26 @@ mod tests {
     }
 
     #[test]
+    fn monster_body_stays_above_the_water() {
+        use crate::pixel_art::creatures::MONSTER_SURFACE;
+        for res in [Res::Low, Res::High] {
+            let surface = MONSTER_SURFACE * res.scale();
+            for k in 0..MONSTER_FRAMES {
+                let f = monster(k, res);
+                let row = |y| (0..f.width).filter(|&x| f.get(x, y).is_some()).count();
+                assert!(
+                    (surface..f.height).all(|y| row(y) == 0),
+                    "frame {k} {res:?}: pixels under the water"
+                );
+                assert!(
+                    row(surface - 1) > 0,
+                    "frame {k} {res:?}: humps reach the surface"
+                );
+            }
+        }
+    }
+
+    #[test]
     fn waterline_keeps_gaps_transparent() {
         for res in [Res::Low, Res::High] {
             let s = res.scale();
