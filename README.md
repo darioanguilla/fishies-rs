@@ -67,7 +67,7 @@ cargo build --release
 | `q`, `Esc`, `Ctrl+C` | quit                                   |
 | `p`            | pause / resume                               |
 | `r`            | redraw (recreates every object)              |
-| `a`            | switch between ASCII and ANSI mode           |
+| `a`            | cycle through ASCII, ANSI and graphics mode  |
 
 Resizing the terminal also rebuilds the scene. The mode is kept across redraws and resizes.
 
@@ -118,6 +118,68 @@ screenshots with `scripts/screenshots.sh`; it needs a Chromium-based browser suc
 
 To always spawn the same random object (handy for debugging), set `FISHIES_OBJECT` to one of
 `ship`, `whale`, `monster`, `big_fish`, `shark`, `fishhook`, `swan`, `ducks`, `dolphins`.
+
+## Graphics mode
+
+On terminals that can show images, `a` has a third step: the scene is drawn with real pixels
+instead of characters, using [Sixel](https://en.wikipedia.org/wiki/Sixel) or the
+[kitty graphics protocol](https://sw.kovidgoyal.net/kitty/graphics-protocol/). It uses the same pixel art, but
+sprites move pixel by pixel instead of cell by cell, the pixels are crisp (no gaps between half
+blocks), bubbles are rings and the fishing line is one pixel thin. The water stays transparent.
+
+| Graphics mode | Over a wallpaper |
+|---------------|------------------|
+| ![shark, graphics mode](docs/screenshots/graphics-shark.png) | ![ship over a wallpaper, graphics mode](docs/screenshots/graphics-transparent.png) |
+
+### Which terminals
+
+At startup fishies **asks** the terminal, instead of guessing from its name, because support
+depends on the version and on settings. It sends a kitty graphics query and a DA1 ("device
+attributes") query, whose answer lists Sixel as attribute `4`; it also asks for the size of a
+cell in pixels. Terminals that answer neither kitty nor Sixel don't get graphics mode. The kitty
+protocol wins when both are there: it has real transparency and is cheaper for animation.
+
+What to expect (the detection decides, so newer versions may do better):
+
+| Terminal | OS | Graphics |
+|----------|----|----------|
+| Windows Terminal 1.22 or later | Windows | Sixel (checked with 1.25) |
+| Windows console host (`conhost`) | Windows | none |
+| WezTerm | Windows, macOS, Linux | kitty, Sixel |
+| mintty (Git Bash, Cygwin) | Windows | Sixel |
+| VS Code terminal | all | Sixel, with `terminal.integrated.enableImages` |
+| iTerm2 | macOS | Sixel |
+| Terminal.app | macOS | none |
+| kitty, Ghostty | macOS, Linux | kitty |
+| Konsole | Linux | kitty, Sixel |
+| foot, mlterm, contour | Linux | Sixel |
+| xterm | Linux | Sixel only when configured as a VT340 (`xterm -ti vt340`) |
+| GNOME Terminal and other VTE terminals | Linux | depends on the VTE version |
+| Alacritty | all | none |
+| tmux, screen | | off: they need extra setup to pass images through |
+
+Run `fishies --detect` to see what your terminal answered and which mode fishies picks.
+
+### When graphics are not available
+
+The `a` key skips graphics mode and goes from ANSI back to ASCII. The last row briefly says why,
+for example *Graphics mode not available: this terminal supports neither Sixel nor the kitty
+graphics protocol*. Nothing breaks, and there's nothing to configure.
+
+### Settings
+
+| Variable | Effect |
+|----------|--------|
+| `FISHIES_GRAPHICS=auto` | the default: ask the terminal |
+| `FISHIES_GRAPHICS=sixel` or `kitty` | use that protocol without asking, e.g. inside tmux with passthrough set up |
+| `FISHIES_GRAPHICS=off` | never use graphics mode |
+| `FISHIES_CELL=10x20` | the cell size in pixels, if the terminal doesn't report it |
+| `FISHIES_STATS=1` | show the protocol, frame size and encoding time on the last row |
+
+The image covers every row but the last one, because a Sixel image that touches the bottom of
+the screen makes the terminal scroll. The last row is drawn in ANSI mode and shows the messages.
+A 120 x 40 terminal makes 1200 x 780 pixel frames: about 20 KB and 7 ms each with Sixel, 70 KB
+with the kitty protocol, which is fine locally but may stutter over a slow SSH connection.
 
 ## Development and releases
 
