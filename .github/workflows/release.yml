@@ -103,19 +103,24 @@ jobs:
       - name: Package
         shell: bash
         run: |
+          # Each target gets an archive (binary + README + LICENSE) and the
+          # bare executable, downloadable without unpacking.
+          mkdir -p dist
           for target in $TARGETS; do
             name="fishies-$TAG-$target"
-            mkdir -p "dist/$name"
-            cp README.md LICENSE "dist/$name/"
-            if [[ "$target" == *windows* ]]; then
-              cp "target/$target/release/fishies.exe" "dist/$name/"
-              (cd dist && 7z a -tzip "$name.zip" "$name" > /dev/null)
+            if [[ "$target" == *windows* ]]; then exe=".exe"; else exe=""; fi
+            stage="staging/$name"
+            mkdir -p "$stage"
+            cp README.md LICENSE "target/$target/release/fishies$exe" "$stage/"
+            if [[ -n "$exe" ]]; then
+              (cd staging && 7z a -tzip "../dist/$name.zip" "$name" > /dev/null)
             else
-              cp "target/$target/release/fishies" "dist/$name/"
-              tar -C dist -czf "dist/$name.tar.gz" "$name"
+              tar -C staging -czf "dist/$name.tar.gz" "$name"
             fi
-            rm -r "dist/$name"
+            cp "target/$target/release/fishies$exe" "dist/$name$exe"
           done
+          rm -r staging
+          ls -l dist
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.name }}
