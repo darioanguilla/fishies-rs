@@ -3,6 +3,8 @@
 mod environment;
 mod fish;
 mod random;
+#[cfg(test)]
+mod screenshots;
 
 use std::sync::OnceLock;
 
