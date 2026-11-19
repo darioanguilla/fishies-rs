@@ -1,6 +1,6 @@
 //! Fish, their bubbles, and what happens when they meet sharks or hooks.
 
-use super::{depth, rand_int};
+use super::{Art, depth, rand_int};
 use crate::engine::{Animation, Behavior, CollHandler, DeathAction, Entity, Id, Kind, Sprite};
 use crate::{art, pixel_art};
 
@@ -44,7 +44,7 @@ pub fn new_fish(fish_num: usize) -> Entity {
     let z = rand_int(depth::FISH_END - depth::FISH_START) + depth::FISH_START;
     let frames = Sprite::single(image).mask(&mask).auto_trans().build();
     Entity::new(Kind::Fish, frames)
-        .pixels(vec![pixel_art::fish(fish_num, &palette)])
+        .art(|r| vec![pixel_art::fish(fish_num, &palette, r)])
         .at(0.0, 0.0, z)
         .speed(speed, 0.0, 0.0, 0.0)
         .behavior(Behavior::Fish)
@@ -134,7 +134,7 @@ fn add_splat(anim: &mut Animation, x: f64, y: f64, z: f64) {
     let sizes: Vec<(usize, usize)> = frames.iter().map(|f| (f.width, f.height)).collect();
     anim.add(
         Entity::new(Kind::Other, frames)
-            .pixels(pixel_art::extras::splat(&sizes))
+            .art(|r| pixel_art::extras::splat(&sizes, r))
             .at(x - 4.0, y - 2.0, z - 2.0)
             .speed(0.0, 0.0, 0.0, 0.25)
             .die_frame(15),

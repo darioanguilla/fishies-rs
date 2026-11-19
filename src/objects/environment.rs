@@ -2,6 +2,7 @@
 
 use std::time::{Duration, Instant};
 
+use super::Art;
 use super::{depth, rand_f, rand_int};
 use crate::engine::{Animation, DeathAction, Entity, Kind, Sprite};
 use crate::{art, pixel_art};
@@ -19,7 +20,7 @@ pub fn add_environment(anim: &mut Animation) {
                 .physical(22.0)
                 // the pixel waves roll; the ASCII line has a single frame
                 .speed(0.0, 0.0, 0.0, 0.25)
-                .pixels(pixel_art::waterline(i, &line)),
+                .art(|r| pixel_art::waterline(i, &line, r)),
         );
     }
 }
@@ -32,7 +33,7 @@ pub fn add_castle(anim: &mut Animation) {
     let (w, h) = (anim.width as f64, anim.height as f64);
     anim.add(
         Entity::new(Kind::Other, frames)
-            .pixels(vec![pixel_art::castle()])
+            .art(|r| vec![pixel_art::castle(r)])
             .at(w - 32.0, h - 13.0, depth::CASTLE),
     );
 }
@@ -60,7 +61,7 @@ pub fn add_seaweed(anim: &mut Animation) {
     let frames = Sprite::new(&images).color("green").build();
     anim.add(
         Entity::new(Kind::Seaweed, frames)
-            .pixels(pixel_art::extras::seaweed(height))
+            .art(|r| pixel_art::extras::seaweed(height, r))
             .at(x, y, depth::SEAWEED)
             .speed(0.0, 0.0, 0.0, anim_speed)
             .die_time(Instant::now() + lifetime)
