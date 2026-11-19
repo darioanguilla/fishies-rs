@@ -67,8 +67,32 @@ cargo build --release
 | `q`, `Esc`, `Ctrl+C` | quit                                   |
 | `p`            | pause / resume                               |
 | `r`            | redraw (recreates every object)              |
+| `a`            | switch between ASCII and ANSI mode           |
 
-Resizing the terminal also rebuilds the scene.
+Resizing the terminal also rebuilds the scene. The mode is kept across redraws and resizes.
+
+## ANSI mode
+
+Press `a` to switch from the original ASCII art to a truecolor look. The water stays
+transparent: like in ASCII mode, the terminal's own background shows through.
+
+- Fish, the castle and the water surface are pixel art drawn with half blocks (`▀`, `▄`), two
+  pixels per cell. Each piece takes up exactly the cells of its ASCII version, so the animation
+  and collisions don't change.
+- Everything else keeps its ASCII art, with softer truecolor shades, lit seaweed tips and Unicode
+  bubbles (`·` `◦` `○`) and fishing line (`│`).
+
+It needs a terminal with 24-bit color and a font with block characters: Windows Terminal,
+iTerm2, kitty, WezTerm, Alacritty, GNOME Terminal and most modern terminals work.
+
+| ASCII | ANSI |
+|-------|------|
+| ![whale, ASCII mode](docs/screenshots/whale-ascii.png) | ![whale, ANSI mode](docs/screenshots/whale-ansi.png) |
+| ![shark, ASCII mode](docs/screenshots/shark-ascii.png) | ![shark, ANSI mode](docs/screenshots/shark-ansi.png) |
+| ![ship over a wallpaper, ASCII mode](docs/screenshots/transparent-ascii.png) | ![ship over a wallpaper, ANSI mode](docs/screenshots/transparent-ansi.png) |
+
+The last row uses a colorful background to show the transparent water. Regenerate the
+screenshots with `scripts/screenshots.sh`; it needs a Chromium-based browser such as Edge or Chrome.
 
 To always spawn the same random object (handy for debugging), set `FISHIES_OBJECT` to one of
 `ship`, `whale`, `monster`, `big_fish`, `shark`, `fishhook`, `swan`, `ducks`, `dolphins`.
