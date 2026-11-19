@@ -166,6 +166,16 @@ fn graphics_frames() {
         )
     });
 
+    // every visitor in graphics mode
+    for object in random::OBJECT_NAMES {
+        let ticks = if object == "fishhook" { 30 } else { 4 };
+        let anim = centered(object, ticks);
+        compose(&anim, &mut canvas, cells);
+        write_png(&dir, &format!("graphics-{object}"), &canvas, |_, _| {
+            (12, 12, 12)
+        });
+    }
+
     for (w, h) in [(120, 40), (200, 60)] {
         let mut anim = scene_sized(w, h, "whale", 30);
         let mut canvas = Canvas::new(w as usize * 10, (h - 1) as usize * 20);
