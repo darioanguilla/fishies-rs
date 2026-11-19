@@ -125,13 +125,25 @@ To always spawn the same random object (handy for debugging), set `FISHIES_OBJEC
   arm64), Windows and macOS for every push and pull request. It also cross-compiles the other
   release targets. Each run's summary lists the test results for each platform, and the CI badge
   above shows the state of `master`.
-- **Release** (`.github/workflows/release.yml`) runs after CI succeeds on `master`. If the version
-  in `Cargo.toml` has no release yet, it creates the `v<version>` tag, builds all the targets and
-  publishes the GitHub release. It then rewrites the download section of this README
-  (`.github/scripts/update-readme.sh`) with the new version and links, and commits it to `master`.
+- **Release** (`.github/workflows/release.yml`) runs after CI succeeds on `master` and releases
+  automatically. Commit messages follow [Conventional Commits](https://www.conventionalcommits.org),
+  and the next version is computed from the commits since the last tag
+  (`.github/scripts/next-version.sh`):
 
-To publish a new version, bump `version` in `Cargo.toml`, run `cargo build` to update
-`Cargo.lock`, then commit and push to `master`.
+  | Commits since the last release           | New version          |
+  |------------------------------------------|----------------------|
+  | a `feat:`                                | minor: 0.2.0 → 0.3.0 |
+  | a `fix:` or `perf:` (and no `feat:`)     | patch: 0.2.0 → 0.2.1 |
+  | `type!:` or `BREAKING CHANGE` in a body  | major (minor while the version is 0.x) |
+  | only `docs:`, `ci:`, `test:`, `chore:`…  | no release           |
+
+  The workflow sets the version in `Cargo.toml` and `Cargo.lock`, commits it as `release: <version>`,
+  creates the `v<version>` tag, builds all the targets and publishes the GitHub release. It then
+  rewrites the download section of this README (`.github/scripts/update-readme.sh`) and commits
+  it to `master`.
+
+To pick the version yourself, set `version` in `Cargo.toml` higher than the latest release, run
+`cargo build` to update `Cargo.lock`, and push to `master`: that version is released as is.
 
 ## Differences from the Perl original
 
