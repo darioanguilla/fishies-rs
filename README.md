@@ -26,7 +26,14 @@ Prebuilt binaries are attached to every [release](https://github.com/darioanguil
 | Windows | `x86_64-pc-windows-msvc`       | `aarch64-pc-windows-msvc`       | n/a                             |
 | macOS   | `x86_64-apple-darwin`          | `aarch64-apple-darwin`          | n/a                             |
 
-Windows archives are `.zip`, all others are `.tar.gz`. Check them against `SHA256SUMS.txt`.
+Each target comes in two forms:
+
+- the bare executable, ready to run: `fishies-<version>-<target>.exe` on Windows,
+  `fishies-<version>-<target>` elsewhere;
+- an archive with the executable, README and LICENSE: `.zip` on Windows, `.tar.gz` elsewhere.
+
+Check downloads against `SHA256SUMS.txt`. Browsers don't keep the executable bit, so on Linux
+and macOS run `chmod +x fishies-*` on a downloaded bare executable before running it.
 Rust has no Windows or macOS target for RISC-V, so RISC-V builds are Linux only.
 
 On macOS, binaries downloaded with a browser are not notarized. Clear the quarantine flag once:
