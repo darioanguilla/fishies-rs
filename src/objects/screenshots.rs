@@ -35,6 +35,36 @@ fn scene(object: &str, ticks: usize) -> Animation {
     anim
 }
 
+/// Like [`scene`], but the object is moved to the middle of the screen
+/// right away (the fishhook only needs time to sink).
+fn centered(object: &str, ticks: usize) -> Animation {
+    let mut anim = scene(object, 0);
+    let ids: Vec<_> = anim
+        .entities
+        .iter()
+        .filter(|e| {
+            e.z < 20.0
+                && e.kind != crate::engine::Kind::Fish
+                && e.kind != crate::engine::Kind::Waterline
+        })
+        .map(|e| e.id)
+        .collect();
+    let group = anim.entities.iter().filter(|e| ids.contains(&e.id));
+    let (left, right) = group.fold((f64::MAX, f64::MIN), |(l, r), e| {
+        (l.min(e.x), r.max(e.x + e.width()))
+    });
+    if object != "fishhook" {
+        let dx = (W as f64 - (right - left)) / 2.0 - left;
+        for e in anim.entities.iter_mut().filter(|e| ids.contains(&e.id)) {
+            e.x += dx;
+        }
+    }
+    for _ in 0..ticks {
+        tick(&mut anim);
+    }
+    anim
+}
+
 fn write(dir: &Path, name: &str, anim: &Animation, mode: Mode, background: &str) {
     let mut buf = Buffer::new(W, H);
     anim.render(&mut buf, mode);
@@ -62,4 +92,16 @@ fn screenshots() {
     let anim = scene("ship", 40);
     write(&dir, "transparent-ascii", &anim, Mode::Ascii, WALLPAPER);
     write(&dir, "transparent-ansi", &anim, Mode::Ansi, WALLPAPER);
+
+    // every random object in ANSI mode
+    for object in random::OBJECT_NAMES {
+        let ticks = if object == "fishhook" { 30 } else { 4 };
+        write(
+            &dir,
+            &format!("gallery-{object}"),
+            &centered(object, ticks),
+            Mode::Ansi,
+            DARK,
+        );
+    }
 }
