@@ -78,7 +78,7 @@ transparent: like in ASCII mode, the terminal's own background shows through.
 
 - Everything is pixel art drawn with half blocks (`▀`, `▄`), two pixels per cell: fish, castle,
   seaweed, the rolling water surface, and all the visitors (ship, whale and its spout, sea
-  monster, big fish, shark and its splat, fishhook, swan, ducks, dolphins). Each sprite takes up
+  monster swimming in a sine wave, big fish, shark and its splat, fishhook, swan, ducks, dolphins). Each sprite takes up
   exactly the cells of its ASCII version, so the animation and collisions don't change.
 - Two things stay as characters, because a whole cell would be too coarse for them: the
   bubbles (`·` `◦` `○`) and the fishing line (`│`).
@@ -123,13 +123,29 @@ To always spawn the same random object (handy for debugging), set `FISHIES_OBJEC
 
 On terminals that can show images, `a` has a third step: the scene is drawn with real pixels
 instead of characters, using [Sixel](https://en.wikipedia.org/wiki/Sixel) or the
-[kitty graphics protocol](https://sw.kovidgoyal.net/kitty/graphics-protocol/). It uses the same pixel art, but
-sprites move pixel by pixel instead of cell by cell, the pixels are crisp (no gaps between half
-blocks), bubbles are rings and the fishing line is one pixel thin. The water stays transparent.
+[kitty graphics protocol](https://sw.kovidgoyal.net/kitty/graphics-protocol/). The water stays transparent.
+
+- **Four times the resolution of ANSI mode** in each direction: 4 x 8 pixels per cell, each
+  about 2.5 x 2.5 screen pixels on a typical 10 x 20 pixel cell. Sprites drawn from shapes (ship,
+  whale, shark, big fish, sea monster) are redrawn at that resolution, with smooth curves and
+  extra details such as rigging, fin rays, throat grooves and pointed teeth. Grid sprites (fish,
+  ducks, swan, dolphins, the hook) are enlarged with Scale2x, which smooths their diagonals instead
+  of making bigger blocks. The castle gets smaller bricks, roof shingles, arched windows and a
+  planked gate; the water a smooth rolling wave and thin ripples.
+- Sprites move pixel by pixel instead of cell by cell.
+- Bubbles are rings and the fishing line is one pixel thin.
 
 | Graphics mode | Over a wallpaper |
 |---------------|------------------|
 | ![shark, graphics mode](docs/screenshots/graphics-shark.png) | ![ship over a wallpaper, graphics mode](docs/screenshots/graphics-transparent.png) |
+
+Every visitor in graphics mode:
+
+| | | |
+|---|---|---|
+| ![ship](docs/screenshots/graphics-ship.png) | ![whale](docs/screenshots/graphics-whale.png) | ![sea monster](docs/screenshots/graphics-monster.png) |
+| ![big fish](docs/screenshots/graphics-big_fish.png) | ![shark](docs/screenshots/graphics-shark.png) | ![fishhook](docs/screenshots/graphics-fishhook.png) |
+| ![swan](docs/screenshots/graphics-swan.png) | ![ducks](docs/screenshots/graphics-ducks.png) | ![dolphins](docs/screenshots/graphics-dolphins.png) |
 
 ### Which terminals
 
@@ -178,8 +194,9 @@ graphics protocol*. Nothing breaks, and there's nothing to configure.
 
 The image covers every row but the last one, because a Sixel image that touches the bottom of
 the screen makes the terminal scroll. The last row is drawn in ANSI mode and shows the messages.
-A 120 x 40 terminal makes 1200 x 780 pixel frames: about 20 KB and 7 ms each with Sixel, 70 KB
-with the kitty protocol, which is fine locally but may stutter over a slow SSH connection.
+A 120 x 40 terminal makes 1200 x 780 pixel frames: about 35 KB and 5 ms each with Sixel, 100 KB
+with the kitty protocol (measured with `cargo test --release graphics_frames -- --ignored
+--nocapture`). That is fine locally, but may stutter over a slow SSH connection.
 
 ## Development and releases
 
