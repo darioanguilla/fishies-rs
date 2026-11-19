@@ -6,11 +6,13 @@
 
 pub mod creatures;
 pub mod extras;
+pub mod pen;
 
 use std::f32::consts::PI;
 
 use crate::color::{self, Rgb, shade};
 use crate::engine::PixFrame;
+use pen::Res;
 
 const WHITE: Rgb = (250, 250, 250);
 const BLACK: Rgb = (15, 15, 25);
@@ -90,14 +92,17 @@ const FISH: [&[&str]; 8] = [
 
 /// Pixel art for ASCII fish number `fish_num` (even = facing right), using
 /// `palette[d - 1]` as the mask letter of part `d`.
-pub fn fish(fish_num: usize, palette: &[char; 9]) -> PixFrame {
+pub fn fish(fish_num: usize, palette: &[char; 9], res: Res) -> PixFrame {
     let color = |c: char| match c {
         'W' => Some(WHITE),
         'k' => Some(BLACK),
         d @ '1'..='9' => color::letter_rgb(palette[d as usize - '1' as usize]),
         _ => None,
     };
-    facing(finish(grid(FISH[fish_num / 2], color)), fish_num % 2)
+    facing(
+        finish(res.upscale(grid(FISH[fish_num / 2], color))),
+        fish_num % 2,
+    )
 }
 
 /// Castle layout, 31 x 26: `T` tower wall, `K` keep wall, `m` merlon,
@@ -138,7 +143,10 @@ fn noise(x: usize, y: usize) -> f32 {
     (h >> 8) as f32 / (1u32 << 24) as f32
 }
 
-pub fn castle() -> PixFrame {
+pub fn castle(res: Res) -> PixFrame {
+    if res == Res::High {
+        return castle_high();
+    }
     let rows: Vec<Vec<char>> = CASTLE.iter().map(|r| r.chars().collect()).collect();
     let mut f = PixFrame::new(rows[0].len(), rows.len());
     for (y, row) in rows.iter().enumerate() {
@@ -176,12 +184,65 @@ pub fn castle() -> PixFrame {
     f
 }
 
+/// The castle at high resolution: the layout smoothed with Scale2x (round
+/// merlons, arched windows, a smooth roof), then textured pixel by pixel:
+/// smaller bricks with their own tint, roof shingles, gate planks.
+fn castle_high() -> PixFrame {
+    let layout = PixFrame::from_grid(&CASTLE, |c| (c != '.').then_some((c as u8, 0, 0)));
+    let up = Res::High.upscale(layout);
+    let mut f = PixFrame::new(up.width, up.height);
+    for y in 0..up.height {
+        for x in 0..up.width {
+            let Some((region, _, _)) = up.get(x, y) else {
+                continue;
+            };
+            let n = noise(x, y);
+            let brick = |base: Rgb| {
+                // courses 6 pixels tall, bricks 12 long, staggered
+                let course = y / 6;
+                let shifted = x + 6 * (course % 2);
+                let mortar = y % 6 == 5 || shifted % 12 == 0;
+                let tint = 0.88 + 0.22 * noise(shifted / 12, course) + 0.05 * n;
+                shade(base, if mortar { 0.68 } else { tint })
+            };
+            let px = match region as char {
+                'T' | 'm' => brick((150, 146, 140)),
+                'K' => brick((178, 172, 162)),
+                'r' => {
+                    let row = y / 3;
+                    let edge = y % 3 == 2 || (x + 3 * (row % 2)) % 6 == 0;
+                    shade((74, 94, 155), if edge { 0.75 } else { 0.95 + 0.1 * n })
+                }
+                'p' => (95, 95, 100),
+                'f' => shade((225, 50, 50), 1.0 - 0.15 * (x % 8) as f32 / 8.0),
+                'w' => (28, 28, 40),
+                'y' => shade((250, 205, 90), 0.85 + 0.25 * n),
+                'g' => {
+                    let band = y % 12 == 3;
+                    let seam = x % 4 == 0;
+                    match (band, seam) {
+                        (true, _) => (70, 66, 64),
+                        (false, true) => (92, 57, 28),
+                        _ => shade((125, 80, 40), 0.92 + 0.12 * n),
+                    }
+                }
+                _ => continue,
+            };
+            f.set(x, y, Some(px));
+        }
+    }
+    f
+}
+
 /// Number of animation frames of the water surface.
 pub const WATER_FRAMES: usize = 8;
 
 /// Animated pixel frames for water line `row` (0 = surface), drawn only
 /// where the ASCII line has a character, so the rest stays transparent.
-pub fn waterline(row: usize, line: &str) -> Vec<PixFrame> {
+pub fn waterline(row: usize, line: &str, res: Res) -> Vec<PixFrame> {
+    if res == Res::High {
+        return waterline_high(row, line);
+    }
     const DEEP: [Rgb; 3] = [(95, 180, 240), (65, 145, 225), (45, 115, 205)];
     let chars: Vec<char> = line.chars().collect();
     (0..WATER_FRAMES)
@@ -218,99 +279,194 @@ pub fn waterline(row: usize, line: &str) -> Vec<PixFrame> {
         .collect()
 }
 
+/// The water at high resolution: the surface is a smooth rolling wave two
+/// pixels thick with foam on the crests; the ripples are thin streaks with
+/// tapered ends and a glint drifting along them.
+fn waterline_high(row: usize, line: &str) -> Vec<PixFrame> {
+    const DEEP: [Rgb; 3] = [(95, 180, 240), (65, 145, 225), (45, 115, 205)];
+    let s = Res::High.scale();
+    let chars: Vec<char> = line.chars().collect();
+    (0..WATER_FRAMES)
+        .map(|p| {
+            let mut f = PixFrame::new(chars.len() * s, 2 * s);
+            if row == 0 {
+                for x in 0..f.width {
+                    if chars[x / s] == ' ' {
+                        continue;
+                    }
+                    let w = (x as f32 / s as f32 * 0.55 - p as f32 * PI / 4.0).sin();
+                    let yc = (s as f32 - 0.5) - (s as f32 - 1.4) * w;
+                    for y in 0..f.height {
+                        if (y as f32 + 0.5 - yc).abs() <= 1.0 {
+                            let t = (w + 1.0) / 2.0;
+                            let c = (
+                                (115.0 + 75.0 * t) as u8,
+                                (205.0 + 35.0 * t) as u8,
+                                (245.0 + 10.0 * t) as u8,
+                            );
+                            f.set(x, y, Some(c));
+                        }
+                    }
+                    if w > 0.92 {
+                        f.dot(x as i32, (yc - 1.5) as i32, (235, 250, 255));
+                    }
+                }
+            } else {
+                let mut run = 0;
+                let mut x = 0;
+                while x < chars.len() {
+                    if chars[x] == ' ' {
+                        x += 1;
+                        continue;
+                    }
+                    let end = x + chars[x..].iter().take_while(|&&c| c != ' ').count();
+                    run += 1;
+                    // the streak bobs between the two halves of the cell
+                    let y = (run + row + p / 4) % 2 * s + s / 2;
+                    for hx in x * s + 1..end * s - 1 {
+                        let glow =
+                            0.85 + 0.3 * ((hx as f32 / s as f32 * 0.7 - p as f32) * PI / 4.0).sin();
+                        f.set(hx, y, Some(shade(DEEP[row - 1], glow)));
+                        if glow > 1.1 {
+                            f.set(hx, y - 1, Some(shade(DEEP[row - 1], glow * 0.85)));
+                        }
+                    }
+                    x = end;
+                }
+            }
+            f
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
+    use super::creatures::*;
+    use super::extras::*;
     use super::*;
     use crate::art;
-    use crate::engine::Sprite;
+    use crate::engine::{HIRES, Sprite};
 
     fn ascii_size(shape: &str) -> (usize, usize) {
         let f = &Sprite::single(shape).build()[0];
         (f.width, f.height)
     }
 
+    /// The sprite takes up the cells of its ASCII art: `w` pixels per cell
+    /// column and two per row at low resolution, `HIRES` times more at high.
+    fn assert_fits(name: &str, ascii: &str, make: impl Fn(Res) -> PixFrame, slack: usize) {
+        let (w, h) = ascii_size(ascii);
+        for res in [Res::Low, Res::High] {
+            let s = res.scale();
+            let px = make(res);
+            assert!(
+                px.width.abs_diff(w * s) <= slack * s && px.height == 2 * h * s,
+                "{name} at {res:?}: pixels {}x{}, ASCII {w}x{h} cells",
+                px.width,
+                px.height
+            );
+        }
+    }
+
     #[test]
     fn fish_footprints_match_ascii() {
         let palette = ['c'; 9];
         for n in 0..art::FISH.len() {
-            let (w, h) = ascii_size(art::FISH[n].0);
-            let p = fish(n, &palette);
-            assert_eq!((p.width, p.height), (w, 2 * h), "fish {n}");
+            assert_fits("fish", art::FISH[n].0, |r| fish(n, &palette, r), 0);
             for row in FISH[n / 2] {
-                assert_eq!(row.chars().count(), w, "fish {n}: row {row:?}");
+                assert_eq!(
+                    row.chars().count(),
+                    ascii_size(art::FISH[n].0).0,
+                    "fish {n}"
+                );
             }
         }
     }
 
     #[test]
     fn castle_footprint_matches_ascii() {
-        let (w, h) = ascii_size(art::CASTLE);
-        let c = castle();
-        assert_eq!((c.width, c.height), (w, 2 * h));
-        assert!(CASTLE.iter().all(|r| r.len() == w));
+        assert_fits("castle", art::CASTLE, castle, 0);
+        assert!(CASTLE.iter().all(|r| r.len() == ascii_size(art::CASTLE).0));
     }
 
     #[test]
     fn left_facing_fish_is_mirrored() {
         let palette = ['r'; 9];
-        assert_eq!(fish(1, &palette), fish(0, &palette).mirrored());
-    }
-
-    fn assert_fits(name: &str, ascii: &str, px: &PixFrame, slack: usize) {
-        let (w, h) = ascii_size(ascii);
-        assert!(
-            px.width.abs_diff(w) <= slack && px.height == 2 * h,
-            "{name}: pixels {}x{}, ASCII {w}x{h} cells",
-            px.width,
-            px.height
-        );
+        for res in [Res::Low, Res::High] {
+            assert_eq!(fish(1, &palette, res), fish(0, &palette, res).mirrored());
+        }
     }
 
     #[test]
     fn object_footprints_match_ascii() {
-        use super::creatures::*;
-        use super::extras::*;
         for dir in 0..2 {
-            assert_fits("ship", art::SHIP[dir], &facing(ship(), dir), 0);
-            assert_fits("shark", art::SHARK[dir], &shark(), 0);
-            assert_fits(
-                "big fish",
-                art::BIG_FISH[dir],
-                &big_fish(&['y'; 9], art::BIG_FISH_MASK[0]),
-                0,
-            );
-            assert_fits("swan", art::SWAN[dir], &swan(), 0);
+            assert_fits("ship", art::SHIP[dir], |r| facing(ship(r), dir), 0);
+            assert_fits("shark", art::SHARK[dir], shark, 0);
+            let palette = ['y'; 9];
+            let fish = |r| big_fish(&palette, art::BIG_FISH_MASK[0], r);
+            assert_fits("big fish", art::BIG_FISH[dir], fish, 0);
+            assert_fits("swan", art::SWAN[dir], swan, 0);
             for (k, f) in art::DUCKS[dir].iter().enumerate() {
-                assert_fits("ducks", f, &ducks(k), 0);
+                assert_fits("ducks", f, |r| ducks(k, r), 0);
             }
-            for (k, f) in dolphin((0, 0, 255)).iter().enumerate() {
-                assert_fits("dolphin", art::DOLPHIN[dir][k], f, 0);
+            for k in 0..2 {
+                let d = |r| dolphin((0, 0, 255), r).swap_remove(k);
+                assert_fits("dolphin", art::DOLPHIN[dir][k], d, 0);
             }
             // the left-facing ASCII monster is 1-2 columns narrower in some frames
             for (k, f) in art::MONSTER[dir].iter().enumerate() {
-                assert_fits("monster", f, &monster(k), 2);
+                assert_fits("monster", f, |r| monster(k * MONSTER_FRAMES / 4, r), 2);
             }
         }
-        let whale = whale();
-        assert_eq!(whale.len(), 12);
-        assert!(whale.iter().all(|f| (f.width, f.height) == (19, 14)));
-        assert_fits("fishhook", art::FISHHOOK, &fishhook(), 0);
-        let sizes: Vec<_> = art::SPLAT.iter().map(|s| ascii_size(s)).collect();
-        for (k, f) in splat(&sizes).iter().enumerate() {
-            assert_fits("splat", art::SPLAT[k], f, 0);
+        for res in [Res::Low, Res::High] {
+            let s = res.scale();
+            let w = whale(res);
+            assert_eq!(w.len(), 12);
+            assert!(w.iter().all(|f| (f.width, f.height) == (19 * s, 14 * s)));
+            assert!(
+                seaweed(5, res)
+                    .iter()
+                    .all(|f| (f.width, f.height) == (2 * s, 10 * s))
+            );
         }
-        assert!(seaweed(5).iter().all(|f| (f.width, f.height) == (2, 10)));
+        assert_fits("fishhook", art::FISHHOOK, fishhook, 0);
+        let sizes: Vec<_> = art::SPLAT.iter().map(|s| ascii_size(s)).collect();
+        for k in 0..sizes.len() {
+            assert_fits(
+                "splat",
+                art::SPLAT[k],
+                |r| splat(&sizes, r).swap_remove(k),
+                0,
+            );
+        }
+    }
+
+    #[test]
+    fn monster_swims_in_a_wave() {
+        // the body moves from frame to frame and the wave loops
+        let a = monster(0, Res::Low);
+        let b = monster(MONSTER_FRAMES / 2, Res::Low);
+        assert_ne!(a, b);
+        assert_eq!(monster(MONSTER_FRAMES, Res::Low), a, "the wave loops");
     }
 
     #[test]
     fn waterline_keeps_gaps_transparent() {
-        let frames = waterline(1, "^^  ^");
-        assert_eq!(frames.len(), WATER_FRAMES);
-        for f in &frames {
-            assert_eq!((f.width, f.height), (5, 2));
-            assert!(f.get(2, 0).is_none() && f.get(2, 1).is_none());
-            // exactly one pixel per character
+        for res in [Res::Low, Res::High] {
+            let s = res.scale();
+            let frames = waterline(1, "^^  ^", res);
+            assert_eq!(frames.len(), WATER_FRAMES);
+            for f in &frames {
+                assert_eq!((f.width, f.height), (5 * s, 2 * s));
+                for x in 2 * s..4 * s {
+                    assert!((0..f.height).all(|y| f.get(x, y).is_none()));
+                }
+            }
+        }
+        // at low resolution, exactly one pixel per character
+        for f in &waterline(1, "^^  ^", Res::Low) {
             assert!(f.get(0, 0).is_some() != f.get(0, 1).is_some());
         }
+        assert_eq!(HIRES, Res::High.scale());
     }
 }

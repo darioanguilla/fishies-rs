@@ -67,7 +67,7 @@ cargo build --release
 | `q`, `Esc`, `Ctrl+C` | quit                                   |
 | `p`            | pause / resume                               |
 | `r`            | redraw (recreates every object)              |
-| `a`            | switch between ASCII and ANSI mode           |
+| `a`            | cycle through ASCII, ANSI and graphics mode  |
 
 Resizing the terminal also rebuilds the scene. The mode is kept across redraws and resizes.
 
@@ -78,7 +78,7 @@ transparent: like in ASCII mode, the terminal's own background shows through.
 
 - Everything is pixel art drawn with half blocks (`▀`, `▄`), two pixels per cell: fish, castle,
   seaweed, the rolling water surface, and all the visitors (ship, whale and its spout, sea
-  monster, big fish, shark and its splat, fishhook, swan, ducks, dolphins). Each sprite takes up
+  monster swimming in a sine wave, big fish, shark and its splat, fishhook, swan, ducks, dolphins). Each sprite takes up
   exactly the cells of its ASCII version, so the animation and collisions don't change.
 - Two things stay as characters, because a whole cell would be too coarse for them: the
   bubbles (`·` `◦` `○`) and the fishing line (`│`).
@@ -118,6 +118,85 @@ screenshots with `scripts/screenshots.sh`; it needs a Chromium-based browser suc
 
 To always spawn the same random object (handy for debugging), set `FISHIES_OBJECT` to one of
 `ship`, `whale`, `monster`, `big_fish`, `shark`, `fishhook`, `swan`, `ducks`, `dolphins`.
+
+## Graphics mode
+
+On terminals that can show images, `a` has a third step: the scene is drawn with real pixels
+instead of characters, using [Sixel](https://en.wikipedia.org/wiki/Sixel) or the
+[kitty graphics protocol](https://sw.kovidgoyal.net/kitty/graphics-protocol/). The water stays transparent.
+
+- **Four times the resolution of ANSI mode** in each direction: 4 x 8 pixels per cell, each
+  about 2.5 x 2.5 screen pixels on a typical 10 x 20 pixel cell. Sprites drawn from shapes (ship,
+  whale, shark, big fish, sea monster) are redrawn at that resolution, with smooth curves and
+  extra details such as rigging, fin rays, throat grooves and pointed teeth. Grid sprites (fish,
+  ducks, swan, dolphins, the hook) are enlarged with Scale2x, which smooths their diagonals instead
+  of making bigger blocks. The castle gets smaller bricks, roof shingles, arched windows and a
+  planked gate; the water a smooth rolling wave and thin ripples.
+- Sprites move pixel by pixel instead of cell by cell.
+- Bubbles are rings and the fishing line is one pixel thin.
+
+| Graphics mode | Over a wallpaper |
+|---------------|------------------|
+| ![shark, graphics mode](docs/screenshots/graphics-shark.png) | ![ship over a wallpaper, graphics mode](docs/screenshots/graphics-transparent.png) |
+
+Every visitor in graphics mode:
+
+| | | |
+|---|---|---|
+| ![ship](docs/screenshots/graphics-ship.png) | ![whale](docs/screenshots/graphics-whale.png) | ![sea monster](docs/screenshots/graphics-monster.png) |
+| ![big fish](docs/screenshots/graphics-big_fish.png) | ![shark](docs/screenshots/graphics-shark.png) | ![fishhook](docs/screenshots/graphics-fishhook.png) |
+| ![swan](docs/screenshots/graphics-swan.png) | ![ducks](docs/screenshots/graphics-ducks.png) | ![dolphins](docs/screenshots/graphics-dolphins.png) |
+
+### Which terminals
+
+At startup fishies **asks** the terminal, instead of guessing from its name, because support
+depends on the version and on settings. It sends a kitty graphics query and a DA1 ("device
+attributes") query, whose answer lists Sixel as attribute `4`; it also asks for the size of a
+cell in pixels. Terminals that answer neither kitty nor Sixel don't get graphics mode. The kitty
+protocol wins when both are there: it has real transparency and is cheaper for animation.
+
+What to expect (the detection decides, so newer versions may do better):
+
+| Terminal | OS | Graphics |
+|----------|----|----------|
+| Windows Terminal 1.22 or later | Windows | Sixel (checked with 1.25) |
+| Windows console host (`conhost`) | Windows | none |
+| WezTerm | Windows, macOS, Linux | kitty, Sixel |
+| mintty (Git Bash, Cygwin) | Windows | Sixel |
+| VS Code terminal | all | Sixel, with `terminal.integrated.enableImages` |
+| iTerm2 | macOS | Sixel |
+| Terminal.app | macOS | none |
+| kitty, Ghostty | macOS, Linux | kitty |
+| Konsole | Linux | kitty, Sixel |
+| foot, mlterm, contour | Linux | Sixel |
+| xterm | Linux | Sixel only when configured as a VT340 (`xterm -ti vt340`) |
+| GNOME Terminal and other VTE terminals | Linux | depends on the VTE version |
+| Alacritty | all | none |
+| tmux, screen | | off: they need extra setup to pass images through |
+
+Run `fishies --detect` to see what your terminal answered and which mode fishies picks.
+
+### When graphics are not available
+
+The `a` key skips graphics mode and goes from ANSI back to ASCII. The last row briefly says why,
+for example *Graphics mode not available: this terminal supports neither Sixel nor the kitty
+graphics protocol*. Nothing breaks, and there's nothing to configure.
+
+### Settings
+
+| Variable | Effect |
+|----------|--------|
+| `FISHIES_GRAPHICS=auto` | the default: ask the terminal |
+| `FISHIES_GRAPHICS=sixel` or `kitty` | use that protocol without asking, e.g. inside tmux with passthrough set up |
+| `FISHIES_GRAPHICS=off` | never use graphics mode |
+| `FISHIES_CELL=10x20` | the cell size in pixels, if the terminal doesn't report it |
+| `FISHIES_STATS=1` | show the protocol, frame size and encoding time on the last row |
+
+The image covers every row but the last one, because a Sixel image that touches the bottom of
+the screen makes the terminal scroll. The last row is drawn in ANSI mode and shows the messages.
+A 120 x 40 terminal makes 1200 x 780 pixel frames: about 35 KB and 5 ms each with Sixel, 100 KB
+with the kitty protocol (measured with `cargo test --release graphics_frames -- --ignored
+--nocapture`). That is fine locally, but may stutter over a slow SSH connection.
 
 ## Development and releases
 

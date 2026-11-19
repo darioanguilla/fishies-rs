@@ -3,13 +3,15 @@
 
 use std::rc::Rc;
 
+use super::Art;
 use super::fish::{apply_palette, rand_palette};
 use super::{depth, rand_int};
 use crate::art;
 use crate::color;
 use crate::engine::shape::perl_lines;
 use crate::engine::{Animation, Behavior, DeathAction, Entity, Kind, Sprite, Step};
-use crate::pixel_art::{creatures, extras, facing};
+use crate::pixel_art::creatures::{self, MONSTER_FRAMES};
+use crate::pixel_art::{extras, facing};
 
 pub const OBJECT_NAMES: [&str; 9] = [
     "ship", "whale", "monster", "big_fish", "shark", "fishhook", "swan", "ducks", "dolphins",
@@ -62,7 +64,7 @@ fn add_shark(anim: &mut Animation) {
         .build();
     anim.add(
         Entity::new(Kind::Shark, frames)
-            .pixels(vec![facing(creatures::shark(), dir)])
+            .art(|r| vec![facing(creatures::shark(r), dir)])
             .at(x, y, depth::SHARK)
             .speed(speed, 0.0, 0.0, 0.0)
             .die_offscreen()
@@ -91,7 +93,7 @@ fn add_fishhook(anim: &mut Animation) {
         .build();
     anim.add(
         Entity::new(Kind::FishHook, frames)
-            .pixels(vec![extras::fishhook()])
+            .art(|r| vec![extras::fishhook(r)])
             .at(x, y, depth::WATER_LINE[1])
             .behavior(hook)
             .die_offscreen()
@@ -122,7 +124,7 @@ fn add_ship(anim: &mut Animation) {
         .build();
     anim.add(
         Entity::new(Kind::Other, frames)
-            .pixels(vec![facing(creatures::ship(), dir)])
+            .art(|r| vec![facing(creatures::ship(r), dir)])
             .at(x, 0.0, depth::WATER_GAP[1])
             .speed(speed, 0.0, 0.0, 0.0)
             .die_offscreen()
@@ -151,12 +153,12 @@ fn add_whale(anim: &mut Animation) {
         .build();
     anim.add(
         Entity::new(Kind::Other, frames)
-            .pixels(
-                creatures::whale()
+            .art(|r| {
+                creatures::whale(r)
                     .into_iter()
                     .map(|f| facing(f, dir))
-                    .collect(),
-            )
+                    .collect()
+            })
             .at(x, 0.0, depth::WATER_GAP[2])
             .speed(speed, 0.0, 0.0, 1.0)
             .die_offscreen()
@@ -173,7 +175,12 @@ fn add_monster(anim: &mut Animation) {
         .build();
     anim.add(
         Entity::new(Kind::Other, frames)
-            .pixels((0..4).map(|k| facing(creatures::monster(k), dir)).collect())
+            .art(|r| {
+                (0..MONSTER_FRAMES)
+                    .map(|k| facing(creatures::monster(k, r), dir))
+                    .collect()
+            })
+            .pixel_rate((MONSTER_FRAMES / 4) as f64)
             .at(x, 2.0, depth::WATER_GAP[2])
             .speed(speed, 0.0, 0.0, 0.25)
             .die_offscreen()
@@ -193,7 +200,6 @@ fn add_big_fish(anim: &mut Animation) {
     let y = rand_int(min_height - max_height) + max_height;
     let palette = rand_palette();
     let mask = apply_palette(art::BIG_FISH_MASK[dir], &palette);
-    let pixels = facing(creatures::big_fish(&palette, art::BIG_FISH_MASK[0]), dir);
     let frames = Sprite::single(art::BIG_FISH[dir])
         .mask(&mask)
         .auto_trans()
@@ -201,7 +207,12 @@ fn add_big_fish(anim: &mut Animation) {
         .build();
     anim.add(
         Entity::new(Kind::Other, frames)
-            .pixels(vec![pixels])
+            .art(|r| {
+                vec![facing(
+                    creatures::big_fish(&palette, art::BIG_FISH_MASK[0], r),
+                    dir,
+                )]
+            })
             .at(x, y, depth::SHARK)
             .speed(speed, 0.0, 0.0, 0.0)
             .die_offscreen()
@@ -218,7 +229,11 @@ fn add_ducks(anim: &mut Animation) {
         .build();
     anim.add(
         Entity::new(Kind::Other, frames)
-            .pixels((0..3).map(|k| facing(creatures::ducks(k), dir)).collect())
+            .art(|r| {
+                (0..3)
+                    .map(|k| facing(creatures::ducks(k, r), dir))
+                    .collect()
+            })
             .at(x, 5.0, depth::WATER_GAP[3])
             .speed(speed, 0.0, 0.0, 0.25)
             .die_offscreen()
@@ -247,12 +262,12 @@ fn add_dolphins(anim: &mut Animation) {
             .color(color)
             .build();
         let base = color::ansi_rgb(color::named(color).color);
-        Entity::new(Kind::Other, frames).pixels(
-            creatures::dolphin(base)
+        Entity::new(Kind::Other, frames).art(|r| {
+            creatures::dolphin(base, r)
                 .into_iter()
                 .map(|f| facing(f, dir))
-                .collect(),
-        )
+                .collect()
+        })
     };
 
     let d3 = anim.add(
@@ -285,7 +300,7 @@ fn add_swan(anim: &mut Animation) {
         .build();
     anim.add(
         Entity::new(Kind::Other, frames)
-            .pixels(vec![facing(creatures::swan(), dir)])
+            .art(|r| vec![facing(creatures::swan(r), dir)])
             .at(x, 1.0, depth::WATER_GAP[3])
             .speed(speed, 0.0, 0.0, 0.25)
             .die_offscreen()

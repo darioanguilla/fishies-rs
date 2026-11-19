@@ -27,15 +27,6 @@ pub enum Mode {
     Ansi,
 }
 
-impl Mode {
-    pub fn toggled(self) -> Self {
-        match self {
-            Mode::Ascii => Mode::Ansi,
-            Mode::Ansi => Mode::Ascii,
-        }
-    }
-}
-
 #[derive(Clone, Copy, Debug, PartialEq, Default)]
 pub enum Cell {
     #[default]
@@ -80,6 +71,29 @@ impl Buffer {
 
     pub fn clear(&mut self) {
         self.cells.fill(Cell::Empty);
+    }
+
+    /// Empty whole rows.
+    pub fn clear_rows(&mut self, rows: std::ops::Range<usize>) {
+        let end = rows.end.min(self.height);
+        if rows.start < end {
+            self.cells[rows.start * self.width..end * self.width].fill(Cell::Empty);
+        }
+    }
+
+    /// Write a line of text over the buffer, cut at the right edge.
+    pub fn text(&mut self, col: usize, row: usize, s: &str) {
+        if row >= self.height {
+            return;
+        }
+        for (i, ch) in s.chars().enumerate().take(self.width.saturating_sub(col)) {
+            self.cells[row * self.width + col + i] = Cell::Glyph {
+                ch,
+                fg: Color::Black,
+                bold: false,
+                bg: Some(Color::Grey),
+            };
+        }
     }
 
     pub fn get(&self, col: usize, row: usize) -> Cell {

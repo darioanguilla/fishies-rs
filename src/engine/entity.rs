@@ -6,6 +6,9 @@ use std::time::Instant;
 use super::pixel::PixFrame;
 use super::shape::Frame;
 
+/// High-resolution pixels per cell column (and per half cell row).
+pub const HIRES: usize = 4;
+
 pub type Id = u64;
 
 /// Entity "type", used by collision handlers and group deaths.
@@ -86,6 +89,11 @@ pub struct Entity {
     pub frames: Vec<Frame>,
     /// Pixel-art frames for ANSI mode; empty means "draw the ASCII frames".
     pub pixels: Vec<PixFrame>,
+    /// Finer pixel art for graphics mode, [`HIRES`] pixels per cell column.
+    pub hires: Vec<PixFrame>,
+    /// Pixel frames advance this many times faster than the ASCII frames,
+    /// for smoother animation with more pixel frames.
+    pub pixel_rate: f64,
     pub frame_pos: f64,
     pub x: f64,
     pub y: f64,
@@ -113,6 +121,8 @@ impl Entity {
             kind,
             frames,
             pixels: Vec::new(),
+            hires: Vec::new(),
+            pixel_rate: 1.0,
             frame_pos: 0.0,
             x: 0.0,
             y: 0.0,
@@ -195,13 +205,35 @@ impl Entity {
         &self.frames[i]
     }
 
-    /// Current pixel frame, if the entity has pixel art.
-    pub fn pixel_frame(&self) -> Option<&PixFrame> {
-        if self.pixels.is_empty() {
+    /// Finer pixel art for graphics mode: [`HIRES`] times as many pixels in
+    /// each direction as [`Entity::pixels`].
+    pub fn hires(mut self, frames: Vec<PixFrame>) -> Self {
+        self.hires = frames;
+        self
+    }
+
+    /// Make the pixel frames advance `rate` times faster than the ASCII ones.
+    pub fn pixel_rate(mut self, rate: f64) -> Self {
+        self.pixel_rate = rate;
+        self
+    }
+
+    fn pick<'a>(&self, frames: &'a [PixFrame]) -> Option<&'a PixFrame> {
+        if frames.is_empty() {
             return None;
         }
-        let i = self.frame_pos.max(0.0) as usize % self.pixels.len();
-        Some(&self.pixels[i])
+        let i = (self.frame_pos.max(0.0) * self.pixel_rate) as usize % frames.len();
+        Some(&frames[i])
+    }
+
+    /// Current pixel frame, if the entity has pixel art.
+    pub fn pixel_frame(&self) -> Option<&PixFrame> {
+        self.pick(&self.pixels)
+    }
+
+    /// Current high-resolution frame, if the entity has one.
+    pub fn hires_frame(&self) -> Option<&PixFrame> {
+        self.pick(&self.hires)
     }
 
     pub fn width(&self) -> f64 {

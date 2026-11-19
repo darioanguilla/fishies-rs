@@ -10,7 +10,8 @@ use std::sync::OnceLock;
 
 use rand::Rng;
 
-use crate::engine::{Animation, Behavior, CollHandler, DeathAction, Entity, Id, Kind};
+use crate::engine::{Animation, Behavior, CollHandler, DeathAction, Entity, Id, Kind, PixFrame};
+use crate::pixel_art::pen::Res;
 
 pub use random::OBJECT_NAMES;
 
@@ -45,6 +46,17 @@ pub(crate) fn rand_int(n: f64) -> f64 {
 pub(crate) fn rand_f(n: f64) -> f64 {
     let n = if n == 0.0 { 1.0 } else { n };
     rand::thread_rng().gen_range(0.0..1.0) * n
+}
+
+/// Pixel art at both resolutions: ANSI mode and graphics mode.
+pub(crate) trait Art {
+    fn art(self, make: impl Fn(Res) -> Vec<PixFrame>) -> Self;
+}
+
+impl Art for Entity {
+    fn art(self, make: impl Fn(Res) -> Vec<PixFrame>) -> Self {
+        self.pixels(make(Res::Low)).hires(make(Res::High))
+    }
 }
 
 /// Build the whole scene for the current screen size.
