@@ -181,6 +181,7 @@ fn add_monster(anim: &mut Animation) {
                     .collect()
             })
             .pixel_rate((MONSTER_FRAMES / 4) as f64)
+            // creatures::MONSTER_SURFACE assumes this row: keep them in sync
             .at(x, 2.0, depth::WATER_GAP[2])
             .speed(speed, 0.0, 0.0, 0.25)
             .die_offscreen()
