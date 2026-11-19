@@ -1,6 +1,6 @@
 [package]
 name = "fishies"
-version = "0.3.0"
+version = "0.3.1"
 edition = "2024"
 description = "An aquarium animation in ASCII art, a Rust port of the Perl Asciiquarium variant 'fishies'"
 license = "GPL-2.0-or-later"
