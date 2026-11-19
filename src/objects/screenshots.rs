@@ -8,7 +8,13 @@ use std::path::{Path, PathBuf};
 
 use super::{environment, fish, random, tick};
 use crate::engine::render::snapshot::{CELL_H, CELL_W, to_html};
+use std::time::{Duration, Instant};
+
+use crate::color::Rgb;
 use crate::engine::{Animation, Buffer, Mode};
+use crate::graphics::canvas::{Canvas, Cells, compose, unpack};
+use crate::graphics::png;
+use crate::graphics::{kitty_encode, sixel_encode};
 
 const W: i32 = 110;
 const H: i32 = 34;
@@ -18,7 +24,11 @@ const DARK: &str = "#0c0c0c";
 const WALLPAPER: &str = "linear-gradient(135deg,#2b1055 0%,#7597de 55%,#f5c26b 100%)";
 
 fn scene(object: &str, ticks: usize) -> Animation {
-    let mut anim = Animation::new(W, H);
+    scene_sized(W, H, object, ticks)
+}
+
+fn scene_sized(w: i32, h: i32, object: &str, ticks: usize) -> Animation {
+    let mut anim = Animation::new(w, h);
     environment::add_environment(&mut anim);
     environment::add_castle(&mut anim);
     environment::add_all_seaweed(&mut anim);
@@ -102,6 +112,84 @@ fn screenshots() {
             &centered(object, ticks),
             Mode::Ansi,
             DARK,
+        );
+    }
+}
+
+/// Composite a graphics-mode canvas over a background and save it as PNG.
+fn write_png(dir: &Path, name: &str, canvas: &Canvas, background: impl Fn(usize, usize) -> Rgb) {
+    let mut rgb = Vec::with_capacity(canvas.width * canvas.height * 3);
+    for y in 0..canvas.height {
+        for x in 0..canvas.width {
+            let p = canvas.px[y * canvas.width + x];
+            let (r, g, b) = if p == 0 { background(x, y) } else { unpack(p) };
+            rgb.extend_from_slice(&[r, g, b]);
+        }
+    }
+    fs::write(
+        dir.join(format!("{name}.png")),
+        png::encode(canvas.width, canvas.height, &rgb),
+    )
+    .unwrap();
+}
+
+/// Graphics mode: screenshots, plus the size and encoding time of frames.
+/// Run with `cargo test --release graphics_frames -- --ignored --nocapture`.
+#[test]
+#[ignore = "writes docs/screenshots/graphics-*.png and prints frame statistics"]
+fn graphics_frames() {
+    let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("docs/screenshots");
+    fs::create_dir_all(&dir).unwrap();
+    let cells = Cells { w: 10.0, h: 20.0 };
+
+    let anim = scene("shark", 36);
+    let mut canvas = Canvas::new(W as usize * 10, H as usize * 20);
+    compose(&anim, &mut canvas, cells);
+    write_png(&dir, "graphics-shark", &canvas, |_, _| (12, 12, 12));
+    let anim = scene("ship", 40);
+    compose(&anim, &mut canvas, cells);
+    let (cw, ch) = (canvas.width as f32, canvas.height as f32);
+    write_png(&dir, "graphics-transparent", &canvas, |x, y| {
+        // the same wallpaper as the ANSI screenshot
+        let t = (x as f32 / cw + y as f32 / ch) / 2.0;
+        let mix = |a: f32, b: f32, c: f32| {
+            (if t < 0.55 {
+                a + (b - a) * t / 0.55
+            } else {
+                b + (c - b) * (t - 0.55) / 0.45
+            }) as u8
+        };
+        (
+            mix(43.0, 117.0, 245.0),
+            mix(16.0, 151.0, 194.0),
+            mix(85.0, 222.0, 107.0),
+        )
+    });
+
+    for (w, h) in [(120, 40), (200, 60)] {
+        let mut anim = scene_sized(w, h, "whale", 30);
+        let mut canvas = Canvas::new(w as usize * 10, (h - 1) as usize * 20);
+        let (mut sixel_bytes, mut kitty_bytes) = (0, 0);
+        let (mut sixel_time, mut kitty_time) = (Duration::ZERO, Duration::ZERO);
+        let frames = 30;
+        for _ in 0..frames {
+            tick(&mut anim);
+            compose(&anim, &mut canvas, cells);
+            let t = Instant::now();
+            sixel_bytes += sixel_encode(&canvas).len();
+            sixel_time += t.elapsed();
+            let t = Instant::now();
+            kitty_bytes += kitty_encode(&canvas).len();
+            kitty_time += t.elapsed();
+        }
+        println!(
+            "{w}x{h} cells, {}x{} px: Sixel {} KB/frame {:.1} ms, kitty {} KB/frame {:.1} ms",
+            canvas.width,
+            canvas.height,
+            sixel_bytes / frames / 1024,
+            sixel_time.as_secs_f64() * 1000.0 / frames as f64,
+            kitty_bytes / frames / 1024,
+            kitty_time.as_secs_f64() * 1000.0 / frames as f64,
         );
     }
 }
