@@ -377,7 +377,7 @@ fn add_ghost(anim: &mut Animation) {
                     .map(|f| facing(f, dir))
                     .collect()
             })
-            .pixel_rate((GHOST_FRAMES / art::GHOST.len()) as f64)
+            .pixel_rate(GHOST_FRAMES as f64 / art::GHOST.len() as f64)
             .at(x, 1.0, depth::WATER_GAP[3])
             .path(0, path)
             .die_offscreen()
@@ -400,7 +400,7 @@ pub fn add_firework(anim: &mut Animation, more: u8) {
         .build();
     let sizes: Vec<(usize, usize)> = frames.iter().map(|f| (f.width, f.height)).collect();
     let base = color::ansi_rgb(color::named(name).color);
-    let x = rand_f(anim.width as f64 - 11.0).trunc();
+    let x = rand_f((anim.width as f64 - 11.0).max(0.0)).trunc();
     anim.add(
         Entity::new(Kind::Other, frames)
             .art(|r| seasonal::fireworks(&sizes, base, r))

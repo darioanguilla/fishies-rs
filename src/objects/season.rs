@@ -104,7 +104,13 @@ pub fn in_season(date: Date) -> impl Iterator<Item = usize> {
 /// one of the in-season visitors, otherwise one of the ordinary objects.
 pub fn choose(date: Date, roll: f64, pick: f64) -> usize {
     let seasonal: Vec<usize> = in_season(date).collect();
-    let index = |n: usize| ((pick * n as f64) as usize).min(n - 1);
+    let index = |n: usize| {
+        if n == 0 {
+            0
+        } else {
+            ((pick * n as f64) as usize).min(n - 1)
+        }
+    };
     if !seasonal.is_empty() && roll < SEASONAL_CHANCE {
         ORDINARY + seasonal[index(seasonal.len())]
     } else {
@@ -148,8 +154,9 @@ pub fn parse_date(s: &str, this_year: i32) -> Option<Date> {
 }
 
 fn days_in_month(year: i32, month: u32) -> u32 {
+    let is_leap = year.rem_euclid(4) == 0 && (year.rem_euclid(100) != 0 || year.rem_euclid(400) == 0);
     match month {
-        2 if year % 4 == 0 && (year % 100 != 0 || year % 400 == 0) => 29,
+        2 if is_leap => 29,
         2 => 28,
         4 | 6 | 9 | 11 => 30,
         _ => 31,
