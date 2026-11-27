@@ -7,6 +7,7 @@
 pub mod creatures;
 pub mod extras;
 pub mod pen;
+pub mod seasonal;
 
 use std::f32::consts::PI;
 
@@ -18,11 +19,11 @@ const WHITE: Rgb = (250, 250, 250);
 const BLACK: Rgb = (15, 15, 25);
 
 /// The common look of every sprite: a darker outline and light from above.
-fn finish(f: PixFrame) -> PixFrame {
+pub(super) fn finish(f: PixFrame) -> PixFrame {
     f.outlined(0.7).shaded(1.2, 0.8)
 }
 
-fn grid<S: AsRef<str>>(rows: &[S], color: impl Fn(char) -> Option<Rgb>) -> PixFrame {
+pub(super) fn grid<S: AsRef<str>>(rows: &[S], color: impl Fn(char) -> Option<Rgb>) -> PixFrame {
     PixFrame::from_grid(rows, color)
 }
 
@@ -343,6 +344,7 @@ fn waterline_high(row: usize, line: &str) -> Vec<PixFrame> {
 mod tests {
     use super::creatures::*;
     use super::extras::*;
+    use super::seasonal::*;
     use super::*;
     use crate::art;
     use crate::engine::{HIRES, Sprite};
@@ -438,6 +440,61 @@ mod tests {
                 |r| splat(&sizes, r).swap_remove(k),
                 0,
             );
+        }
+    }
+
+    #[test]
+    fn seasonal_footprints_match_ascii() {
+        for dir in 0..2 {
+            for k in 0..2 {
+                let s = |r| facing(santa(k, r), dir);
+                assert_fits("santa", art::SANTA[dir][k], s, 0);
+            }
+            assert_fits("bunny", art::BUNNY[dir], |r| facing(bunny(r), dir), 0);
+        }
+        for f in art::GHOST {
+            for k in 0..GHOST_FRAMES {
+                assert_fits("ghost", f, |r| ghost(r).swap_remove(k), 0);
+            }
+        }
+        let sizes: Vec<_> = art::FIREWORKS.iter().map(|s| ascii_size(s)).collect();
+        for k in 0..sizes.len() {
+            let f = |r| fireworks(&sizes, (255, 0, 0), r).swap_remove(k);
+            assert_fits("fireworks", art::FIREWORKS[k], f, 0);
+            assert!(
+                f(Res::Low).px.iter().any(Option::is_some),
+                "fireworks frame {k} is empty"
+            );
+        }
+    }
+
+    #[test]
+    fn seasonal_masks_match_their_art() {
+        let pairs = [
+            (art::SANTA[0][0], art::SANTA_MASK[0]),
+            (art::SANTA[0][1], art::SANTA_MASK[0]),
+            (art::SANTA[1][0], art::SANTA_MASK[1]),
+            (art::SANTA[1][1], art::SANTA_MASK[1]),
+            (art::GHOST[0], art::GHOST_MASK),
+            (art::GHOST[1], art::GHOST_MASK),
+            (art::BUNNY[0], art::BUNNY_MASK[0]),
+            (art::BUNNY[1], art::BUNNY_MASK[1]),
+        ];
+        for (shape, mask) in pairs {
+            let (shape, mask): (Vec<_>, Vec<_>) = (shape.lines().collect(), mask.lines().collect());
+            assert_eq!(shape.len(), mask.len());
+            for (s, m) in shape.iter().zip(&mask) {
+                // every visible character has a color and nothing else does
+                let s: Vec<char> = s.chars().collect();
+                for (x, c) in m.chars().enumerate() {
+                    assert_eq!(
+                        c == ' ',
+                        s.get(x).is_none_or(|&s| s == ' '),
+                        "{s:?} / {m:?}"
+                    );
+                }
+                assert!(m.len() >= s.iter().rposition(|&c| c != ' ').map_or(0, |i| i + 1));
+            }
         }
     }
 

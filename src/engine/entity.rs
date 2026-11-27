@@ -72,6 +72,9 @@ pub enum DeathAction {
     GroupDeath(&'static [Kind]),
     /// The lead dolphin tells the other two to die offscreen.
     LeadDolphin([Id; 2]),
+    /// A firework faded and `n` more are still to come; after the last one,
+    /// a random object.
+    Fireworks(u8),
 }
 
 /// Reaction to collisions (the Perl `coll_handler`).

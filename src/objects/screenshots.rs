@@ -75,6 +75,16 @@ fn centered(object: &str, ticks: usize) -> Animation {
     anim
 }
 
+/// How long to wait before taking a gallery picture of `object`: the
+/// fishhook needs to sink, the fireworks to burst.
+fn shot_ticks(object: &str) -> usize {
+    match object {
+        "fishhook" => 30,
+        "fireworks" => 9,
+        _ => 4,
+    }
+}
+
 fn write(dir: &Path, name: &str, anim: &Animation, mode: Mode, background: &str) {
     let mut buf = Buffer::new(W, H);
     anim.render(&mut buf, mode);
@@ -105,7 +115,7 @@ fn screenshots() {
 
     // every random object in ANSI mode
     for object in random::OBJECT_NAMES {
-        let ticks = if object == "fishhook" { 30 } else { 4 };
+        let ticks = shot_ticks(object);
         write(
             &dir,
             &format!("gallery-{object}"),
@@ -168,7 +178,7 @@ fn graphics_frames() {
 
     // every visitor in graphics mode
     for object in random::OBJECT_NAMES {
-        let ticks = if object == "fishhook" { 30 } else { 4 };
+        let ticks = shot_ticks(object);
         let anim = centered(object, ticks);
         compose(&anim, &mut canvas, cells);
         write_png(&dir, &format!("graphics-{object}"), &canvas, |_, _| {

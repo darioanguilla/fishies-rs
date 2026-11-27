@@ -5,21 +5,39 @@ use std::rc::Rc;
 
 use super::Art;
 use super::fish::{apply_palette, rand_palette};
-use super::{depth, rand_int};
+use super::season::SEASONS;
+use super::{depth, rand_f, rand_int};
 use crate::art;
 use crate::color;
 use crate::engine::shape::perl_lines;
 use crate::engine::{Animation, Behavior, DeathAction, Entity, Kind, Sprite, Step};
 use crate::pixel_art::creatures::{self, MONSTER_FRAMES};
+use crate::pixel_art::seasonal::{self, GHOST_FRAMES};
 use crate::pixel_art::{extras, facing};
 
-/// How many of [`OBJECT_NAMES`] are ordinary objects; the seasonal visitors
-/// ([`super::season::SEASONS`]) follow them.
-pub const ORDINARY: usize = 9;
-
-pub const OBJECT_NAMES: [&str; 9] = [
+const ORDINARY_NAMES: [&str; ORDINARY] = [
     "ship", "whale", "monster", "big_fish", "shark", "fishhook", "swan", "ducks", "dolphins",
 ];
+
+/// How many of [`OBJECT_NAMES`] are ordinary objects; the seasonal visitors
+/// follow them, in the order of [`SEASONS`].
+pub const ORDINARY: usize = 9;
+
+/// Every random object, as `FISHIES_OBJECT` names them; the index is the
+/// argument of [`spawn`].
+pub const OBJECT_NAMES: [&str; ORDINARY + SEASONS.len()] = {
+    let mut names = [""; ORDINARY + SEASONS.len()];
+    let mut i = 0;
+    while i < names.len() {
+        names[i] = if i < ORDINARY {
+            ORDINARY_NAMES[i]
+        } else {
+            SEASONS[i - ORDINARY].name
+        };
+        i += 1;
+    }
+    names
+};
 
 pub fn spawn(idx: usize, anim: &mut Animation) {
     match idx {
@@ -31,7 +49,12 @@ pub fn spawn(idx: usize, anim: &mut Animation) {
         5 => add_fishhook(anim),
         6 => add_swan(anim),
         7 => add_ducks(anim),
-        _ => add_dolphins(anim),
+        8 => add_dolphins(anim),
+        9 => add_santa(anim),
+        10 => add_ghost(anim),
+        11 => add_fireworks(anim),
+        12 => add_bunny(anim),
+        _ => unreachable!("no random object number {idx}"),
     }
 }
 
@@ -313,6 +336,100 @@ fn add_swan(anim: &mut Animation) {
     );
 }
 
+fn add_santa(anim: &mut Animation) {
+    let (dir, speed, x) = direction(anim, 1.5, -29.0);
+    let frames = Sprite::new(&art::SANTA[dir])
+        .mask(art::SANTA_MASK[dir])
+        .auto_trans()
+        .color("WHITE")
+        .build();
+    anim.add(
+        Entity::new(Kind::Other, frames)
+            .art(|r| (0..2).map(|k| facing(seasonal::santa(k, r), dir)).collect())
+            .at(x, 0.0, depth::WATER_GAP[0])
+            .speed(speed, 0.0, 0.0, 0.25)
+            .die_offscreen()
+            .on_death(DeathAction::RandomObject),
+    );
+}
+
+fn add_ghost(anim: &mut Animation) {
+    let (dir, speed, x) = direction(anim, 1.0, -8.0);
+    // it bobs gently above the water
+    let down = Step::new(speed, 0.25, 0.0, 0.25);
+    let up = Step::new(speed, -0.25, 0.0, 0.25);
+    let hover = Step::new(speed, 0.0, 0.0, 0.25);
+    let path: Rc<[Step]> = std::iter::repeat_n(down, 8)
+        .chain(std::iter::repeat_n(hover, 3))
+        .chain(std::iter::repeat_n(up, 8))
+        .chain(std::iter::repeat_n(hover, 3))
+        .collect();
+    let frames = Sprite::new(&art::GHOST)
+        .mask(art::GHOST_MASK)
+        .auto_trans()
+        .color("WHITE")
+        .build();
+    anim.add(
+        Entity::new(Kind::Other, frames)
+            .art(|r| {
+                seasonal::ghost(r)
+                    .into_iter()
+                    .map(|f| facing(f, dir))
+                    .collect()
+            })
+            .pixel_rate((GHOST_FRAMES / art::GHOST.len()) as f64)
+            .at(x, 1.0, depth::WATER_GAP[3])
+            .path(0, path)
+            .die_offscreen()
+            .on_death(DeathAction::RandomObject),
+    );
+}
+
+/// A New Year's show of 3 to 5 fireworks, one after the other.
+fn add_fireworks(anim: &mut Animation) {
+    add_firework(anim, 2 + rand_int(3.0) as u8);
+}
+
+/// One firework somewhere in the sky; `more` follow it.
+pub fn add_firework(anim: &mut Animation, more: u8) {
+    const COLORS: [&str; 7] = ["RED", "GREEN", "BLUE", "CYAN", "MAGENTA", "YELLOW", "WHITE"];
+    let name = COLORS[rand_int(COLORS.len() as f64) as usize];
+    let frames = Sprite::new(&art::FIREWORKS)
+        .color(name)
+        .transparent(' ')
+        .build();
+    let sizes: Vec<(usize, usize)> = frames.iter().map(|f| (f.width, f.height)).collect();
+    let base = color::ansi_rgb(color::named(name).color);
+    let x = rand_f(anim.width as f64 - 11.0).trunc();
+    anim.add(
+        Entity::new(Kind::Other, frames)
+            .art(|r| seasonal::fireworks(&sizes, base, r))
+            .at(x, 0.0, depth::WATER_GAP[0])
+            // two ticks per frame, then it is gone
+            .speed(0.0, 0.0, 0.0, 0.5)
+            .die_frame(14)
+            .die_offscreen()
+            .on_death(DeathAction::Fireworks(more)),
+    );
+}
+
+fn add_bunny(anim: &mut Animation) {
+    let (dir, speed, x) = direction(anim, 0.75, -13.0);
+    let frames = Sprite::single(art::BUNNY[dir])
+        .mask(art::BUNNY_MASK[dir])
+        .auto_trans()
+        .color("WHITE")
+        .build();
+    anim.add(
+        Entity::new(Kind::Other, frames)
+            .art(|r| vec![facing(seasonal::bunny(r), dir)])
+            .at(x, 2.0, depth::WATER_GAP[3])
+            .speed(speed, 0.0, 0.0, 0.0)
+            .die_offscreen()
+            .on_death(DeathAction::RandomObject),
+    );
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -328,5 +445,41 @@ mod tests {
         // the spout is drawn above the whale in the last frames
         let spout = &e.frames[5];
         assert!((0..spout.width).any(|c| spout.get(c, 2).is_some_and(|(ch, _)| ch == ':')));
+    }
+
+    #[test]
+    fn fireworks_launch_one_after_another() {
+        let mut anim = Animation::new(100, 40);
+        spawn(
+            OBJECT_NAMES.iter().position(|&n| n == "fireworks").unwrap(),
+            &mut anim,
+        );
+        anim.flush();
+        let mut bursts = 1;
+        let mut current = anim.entities[0].id;
+        for _ in 0..200 {
+            super::super::tick(&mut anim);
+            let e = &anim.entities[0];
+            if e.id == current {
+                continue;
+            }
+            current = e.id;
+            if !matches!(e.on_death, DeathAction::Fireworks(_)) {
+                break;
+            }
+            assert!(e.x >= 0.0 && e.x + e.width() <= 100.0);
+            bursts += 1;
+        }
+        assert!((3..=5).contains(&bursts), "{bursts} bursts");
+    }
+
+    #[test]
+    fn seasonal_visitors_follow_the_ordinary_objects() {
+        // the spawn arms 9..=12 rely on this order
+        assert_eq!(
+            OBJECT_NAMES[ORDINARY..],
+            ["santa", "ghost", "fireworks", "bunny"]
+        );
+        assert_eq!(OBJECT_NAMES[ORDINARY - 1], "dolphins");
     }
 }

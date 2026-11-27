@@ -77,7 +77,7 @@ pub fn random_object(anim: &mut Animation) {
         .get()
         .copied()
         .flatten()
-        .unwrap_or_else(|| rand_int(OBJECT_NAMES.len() as f64) as usize);
+        .unwrap_or_else(|| season::choose(season::today(), rand_f(1.0), rand_f(1.0)));
     random::spawn(idx, anim);
 }
 
@@ -168,6 +168,8 @@ fn on_death(anim: &mut Animation, e: Entity) {
             }
             random_object(anim);
         }
+        DeathAction::Fireworks(0) => random_object(anim),
+        DeathAction::Fireworks(n) => random::add_firework(anim, n - 1),
         DeathAction::LeadDolphin(others) => {
             // the followers started offscreen, so they only die offscreen now
             for id in others {

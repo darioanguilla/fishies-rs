@@ -5,6 +5,11 @@
 //! becomes a single one) is applied at runtime by [`crate::engine::shape::perl_q`].
 //!
 //! Most of the art is by Joan Stark; Asciiquarium by Kirk Baucom (GPL-2.0+).
+//!
+//! The seasonal visitors at the end (Santa, the ghost, the fireworks and the
+//! Easter bunny) are original to this port, not from the Perl script. They
+//! use the same conventions and contain no doubled backslashes, so `perl_q`
+//! leaves them unchanged.
 
 #![allow(dead_code)]
 
@@ -807,3 +812,182 @@ pub const DOLPHIN_MASK: [&str; 2] = [B86, B87];
 
 pub const SWAN: [&str; 2] = [B88, B89];
 pub const SWAN_MASK: [&str; 2] = [B90, B91];
+
+// Seasonal visitors: original art for this port (see the module docs).
+
+const SANTA_R0: &str = r##"
+    /\*                  \_/
+   (oo)             _____/ o@
+|\_{##}_/----------(_____ _/
+ \______/           /\   /\
+"##;
+
+const SANTA_R1: &str = r##"
+    /\*                  \_/
+   (oo)             _____/ o@
+|\_{##}_/----------(_____ _/
+ \______/           ||   ||
+"##;
+
+const SANTA_L0: &str = r##"
+ \_/                  */\
+@o \_____             (oo)
+ \_ _____)----------\_{##}_/|
+  /\   /\           \______/
+"##;
+
+const SANTA_L1: &str = r##"
+ \_/                  */\
+@o \_____             (oo)
+ \_ _____)----------\_{##}_/|
+  ||   ||           \______/
+"##;
+
+const SANTA_MASK_R: &str = r##"
+    RRW                  yyy
+   WwwW             yyyyyy WR
+rrrRRRRrrYYYYYYYYYYyyyyyy yy
+ YYYYYYYY           yy   yy
+"##;
+
+const SANTA_MASK_L: &str = r##"
+ yyy                  WRR
+RW yyyyyy             WwwW
+ yy yyyyyyYYYYYYYYYYrrRRRRrrr
+  yy   yy           YYYYYYYY
+"##;
+
+const GHOST_0: &str = r##"
+  .--.
+ / oo \
+|  ()  |
+|      |
+\/\/\/\/
+"##;
+
+const GHOST_1: &str = r##"
+  .--.
+ / oo \
+|  ()  |
+|      |
+/\/\/\/\
+"##;
+
+const GHOST_M: &str = r##"
+  WWWW
+ W KK W
+W  KK  W
+W      W
+WWWWWWWW
+"##;
+
+const FIREWORKS_0: &str = r##"
+
+
+
+     ^
+     |
+"##;
+
+const FIREWORKS_1: &str = r##"
+
+
+     ^
+     |
+     .
+"##;
+
+const FIREWORKS_2: &str = r##"
+
+    \|/
+    -*-
+    /|\
+"##;
+
+const FIREWORKS_3: &str = r##"
+  \  |  /
+   \ | /
+--- -*- ---
+   / | \
+  /  |  \
+"##;
+
+const FIREWORKS_4: &str = r##"
+ *   *   *
+   *   *
+*    *    *
+   *   *
+ *   *   *
+"##;
+
+const FIREWORKS_5: &str = r##"
+
+ .   .   .
+   .   .
+.    .    .
+   .   .
+"##;
+
+const FIREWORKS_6: &str = r##"
+
+
+  .     .
+     .
+ .   .   .
+"##;
+
+const BUNNY_R: &str = r##"
+    (\(\
+    ( ^.^)
+/\/\o(")(")/\
+\           /
+ '._______.'
+"##;
+
+const BUNNY_L: &str = r##"
+     /)/)
+   (^.^ )
+/\(")(")o/\/\
+\           /
+ '._______.'
+"##;
+
+const BUNNY_MASK_R: &str = r##"
+    WWWW
+    W KMKW
+YYYYWWWWWWWYY
+M           M
+ MMMMMMMMMMM
+"##;
+
+const BUNNY_MASK_L: &str = r##"
+     WWWW
+   WKMK W
+YYWWWWWWWYYYY
+M           M
+ MMMMMMMMMMM
+"##;
+
+/// Santa's sleigh and reindeer, two frames (the reindeer's legs) per
+/// direction; even index = facing right, odd = facing left.
+pub const SANTA: [[&str; 2]; 2] = [[SANTA_R0, SANTA_R1], [SANTA_L0, SANTA_L1]];
+pub const SANTA_MASK: [&str; 2] = [SANTA_MASK_R, SANTA_MASK_L];
+
+/// A ghost with a fluttering hem; it looks the same both ways.
+pub const GHOST: [&str; 2] = [GHOST_0, GHOST_1];
+pub const GHOST_MASK: &str = GHOST_M;
+
+/// One firework: the rocket rises, bursts and fades (no mask: one color).
+pub const FIREWORKS: [&str; 7] = [
+    FIREWORKS_0,
+    FIREWORKS_1,
+    FIREWORKS_2,
+    FIREWORKS_3,
+    FIREWORKS_4,
+    FIREWORKS_5,
+    FIREWORKS_6,
+];
+
+/// The Easter bunny floating in half an eggshell.
+pub const BUNNY: [&str; 2] = [BUNNY_R, BUNNY_L];
+pub const BUNNY_MASK: [&str; 2] = [BUNNY_MASK_R, BUNNY_MASK_L];
