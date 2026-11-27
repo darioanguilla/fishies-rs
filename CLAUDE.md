@@ -18,7 +18,7 @@ cargo test --locked
 
 - Single test: `cargo test <name_substring>`, e.g. `cargo test hooked_fish_reels_everything_up`
 - Run: `cargo run` (or `cargo run --release`). `fishies --detect` prints what graphics the terminal reported.
-- Debug a specific visitor: `FISHIES_OBJECT=shark cargo run`. Valid names are in `objects::OBJECT_NAMES`. Other env vars: `FISHIES_GRAPHICS=auto|sixel|kitty|off`, `FISHIES_CELL=WxH`, `FISHIES_STATS=1`.
+- Debug a specific visitor: `FISHIES_OBJECT=shark cargo run`. Valid names are in `objects::OBJECT_NAMES`. Other env vars: `FISHIES_DATE=[YYYY-]MM-DD` (pretend it is that day, for the seasonal visitors), `FISHIES_GRAPHICS=auto|sixel|kitty|off`, `FISHIES_CELL=WxH`, `FISHIES_STATS=1`.
 - Ignored tests that write files:
   - `scripts/screenshots.sh` regenerates `docs/screenshots/*.png`. It runs `cargo test screenshots -- --ignored` and then takes the screenshots with a headless Chromium/Edge (set `BROWSER` to pick one).
   - `cargo test --release graphics_frames -- --ignored --nocapture` writes the `graphics-*.png` files and prints Sixel/kitty frame size and encode-time stats.
@@ -52,8 +52,9 @@ The modes share one simulation. Only the drawing differs.
   - Rendering sorts entities by z, back (high z) to front (low z). `render.rs` holds the cell `Buffer` and `Screen`, which writes to the terminal incrementally.
 - **`objects/`**: the aquarium logic, i.e. what the Perl script does on top of the engine. `populate` builds the scene. `tick` runs four phases in order: movement/behaviors, collisions, automatic deaths (offscreen/time/frame), then death callbacks, repeated until nothing else dies. Some death actions spawn the next random object (`random.rs`).
   - The `depth` module defines the z layers.
+  - `season.rs` decides which seasonal visitors (santa, ghost, fireworks, bunny) are in season: fixed date windows (which may wrap around the new year) or days around Easter. `random_object` goes through `season::choose`: about 1 in 3 spawns goes to an in-season visitor, and out of season they only appear with `FISHIES_OBJECT`. In `random::OBJECT_NAMES` the seasonal visitors follow the `ORDINARY` objects, in the order of `season::SEASONS`.
   - `rand_int`/`rand_f` mimic Perl's `int(rand(n))`/`rand(n)`, including the rule that `rand(0)` behaves like `rand(1)`.
-- **`art.rs`**: ASCII art copied verbatim from the Perl `q{...}` literals. The Perl quoting rules are applied at runtime by `engine::shape::perl_q`/`perl_lines`, so keep the literals byte-for-byte.
+- **`art.rs`**: ASCII art copied verbatim from the Perl `q{...}` literals. The Perl quoting rules are applied at runtime by `engine::shape::perl_q`/`perl_lines`, so keep the literals byte-for-byte. The seasonal art at the end of the file is original to this port (no doubled backslashes, so `perl_q` leaves it alone); its pixel art is in `pixel_art/seasonal.rs`.
 - **`color.rs`**: Term::Animation color-mask letters (`rgbcmywk`, uppercase = bright) plus RGB helpers.
 - **`pixel_art/`**: original pixel art for ANSI and graphics mode. Each sprite is drawn once through a `pen::Pen` at a given `Res`:
   - `Res::Low` gives ANSI half blocks.

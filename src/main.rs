@@ -101,6 +101,7 @@ fn usage() -> String {
          Keys: q quit, p pause, r redraw, a ASCII / ANSI / graphics mode\n\n\
          --detect                 show what graphics the terminal supports\n\
          FISHIES_OBJECT=<name>    always spawn that object: {}\n\
+         FISHIES_DATE=<date>      pretend today is <date>, [YYYY-]MM-DD (seasonal visitors)\n\
          FISHIES_GRAPHICS=<mode>  auto (default), sixel, kitty or off\n\
          FISHIES_CELL=<w>x<h>     cell size in pixels, if the terminal doesn't tell\n\
          FISHIES_STATS=1          show the size and encoding time of graphics frames",
@@ -144,6 +145,7 @@ fn main() -> io::Result<()> {
         }
     }
     objects::force_object(std::env::var("FISHIES_OBJECT").ok().as_deref());
+    objects::set_date_override(std::env::var("FISHIES_DATE").ok().as_deref());
 
     let default_hook = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |info| {

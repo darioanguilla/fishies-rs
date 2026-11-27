@@ -15,6 +15,7 @@ dependency (it uses [crossterm](https://crates.io/crates/crossterm)) and runs on
 You get the water surface, a castle, swaying seaweed and colorful fish blowing bubbles. One
 "random object" is always passing by: a ship, a whale with its water spout, a sea monster,
 a big fish, a shark that eats fish, a fishhook that catches one, a swan, ducks, or dolphins.
+Around the holidays there are [seasonal visitors](#seasonal-visitors) too.
 
 ## Download
 
@@ -78,7 +79,7 @@ transparent: like in ASCII mode, the terminal's own background shows through.
 
 - Everything is pixel art drawn with half blocks (`▀`, `▄`), two pixels per cell: fish, castle,
   seaweed, the rolling water surface, and all the visitors (ship, whale and its spout, sea
-  monster swimming in a sine wave, big fish, shark and its splat, fishhook, swan, ducks, dolphins). Each sprite takes up
+  monster swimming in a sine wave, big fish, shark and its splat, fishhook, swan, ducks, dolphins, and the seasonal visitors). Each sprite takes up
   exactly the cells of its ASCII version, so the animation and collisions don't change.
 - Two things stay as characters, because a whole cell would be too coarse for them: the
   bubbles (`·` `◦` `○`) and the fishing line (`│`).
@@ -117,7 +118,26 @@ Regenerate the
 screenshots with `scripts/screenshots.sh`; it needs a Chromium-based browser such as Edge or Chrome.
 
 To always spawn the same random object (handy for debugging), set `FISHIES_OBJECT` to one of
-`ship`, `whale`, `monster`, `big_fish`, `shark`, `fishhook`, `swan`, `ducks`, `dolphins`.
+`ship`, `whale`, `monster`, `big_fish`, `shark`, `fishhook`, `swan`, `ducks`, `dolphins`,
+`santa`, `ghost`, `fireworks`, `bunny`.
+
+## Seasonal visitors
+
+Some visitors only come at their time of the year: Santa's sleigh, a ghost, New Year's
+fireworks and the Easter bunny. While one is in season it takes about one random object in
+three; the rest of the year it never shows up, unless you ask for it with `FISHIES_OBJECT`.
+
+| Visitor | In season | |
+|---------|-----------|---|
+| Santa and his reindeer | December 1 to 26 | ![Santa](docs/screenshots/gallery-santa.png) |
+| A ghost | October 20 to November 1 | ![ghost](docs/screenshots/gallery-ghost.png) |
+| Fireworks, 3 to 5 bursts in random colors | December 31 and January 1 | ![fireworks](docs/screenshots/gallery-fireworks.png) |
+| The Easter bunny in an eggshell | 3 days before to 3 days after Easter Sunday | ![Easter bunny](docs/screenshots/gallery-bunny.png) |
+
+Dates are in local time. To see them on another day, set `FISHIES_DATE` to `MM-DD` or
+`YYYY-MM-DD`, e.g. `FISHIES_DATE=12-24 fishies` (without a year, the current one is used, which
+matters for Easter). The idea comes from Kirk Baucom, the author of Asciiquarium, and his
+*weatherspect*; the art for them is original to this port.
 
 ## Graphics mode
 
@@ -191,6 +211,7 @@ graphics protocol*. Nothing breaks, and there's nothing to configure.
 | `FISHIES_GRAPHICS=off` | never use graphics mode |
 | `FISHIES_CELL=10x20` | the cell size in pixels, if the terminal doesn't report it |
 | `FISHIES_STATS=1` | show the protocol, frame size and encoding time on the last row |
+| `FISHIES_DATE=12-24` | pretend it is that day, `[YYYY-]MM-DD`, for the [seasonal visitors](#seasonal-visitors) |
 
 The image covers every row but the last one, because a Sixel image that touches the bottom of
 the screen makes the terminal scroll. The last row is drawn in ANSI mode and shows the messages.
@@ -230,11 +251,13 @@ To pick the version yourself, set `version` in `Cargo.toml` higher than the late
   (`src/engine`). Entity callbacks are enums instead of closures.
 - When the fishhook leaves the screen, its hook point is removed too. The original left it behind.
 - `rand_color` can now pick every color in its list. The original never picked bright magenta.
+- The seasonal visitors (Santa, the ghost, the fireworks and the Easter bunny) are new.
 
 ## Credits and license
 
 - Asciiquarium by Kirk Baucom, most of the ASCII art by Joan Stark.
 - `fishies` transparency by UndeadLeech, the rwx fishy by qmacro.
+- The seasonal visitors are an idea of Kirk Baucom's, from his *weatherspect*.
 
 Licensed under the GNU General Public License, version 2 or (at your option) any later version,
 like the original. See [LICENSE](LICENSE).
