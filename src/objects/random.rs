@@ -13,6 +13,10 @@ use crate::engine::{Animation, Behavior, DeathAction, Entity, Kind, Sprite, Step
 use crate::pixel_art::creatures::{self, MONSTER_FRAMES};
 use crate::pixel_art::{extras, facing};
 
+/// How many of [`OBJECT_NAMES`] are ordinary objects; the seasonal visitors
+/// ([`super::season::SEASONS`]) follow them.
+pub const ORDINARY: usize = 9;
+
 pub const OBJECT_NAMES: [&str; 9] = [
     "ship", "whale", "monster", "big_fish", "shark", "fishhook", "swan", "ducks", "dolphins",
 ];

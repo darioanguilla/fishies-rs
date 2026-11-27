@@ -5,6 +5,7 @@ mod fish;
 mod random;
 #[cfg(test)]
 mod screenshots;
+mod season;
 
 use std::sync::OnceLock;
 
@@ -14,6 +15,7 @@ use crate::engine::{Animation, Behavior, CollHandler, DeathAction, Entity, Id, K
 use crate::pixel_art::pen::Res;
 
 pub use random::OBJECT_NAMES;
+pub use season::set_date_override;
 
 /// The Z depth at which certain items occur (lower = closer to the viewer).
 pub mod depth {
